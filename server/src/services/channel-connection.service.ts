@@ -11,13 +11,14 @@ import {
   ChannelConnectionModel,
 } from "../models/channel-connection.model";
 import {
-  ConflictError,
+  ForbiddenError,
   IntegrationNotReadyError,
   NotFoundError,
   ValidationError,
 } from "../lib/errors";
 import { env } from "../config/env";
 import { emitRealtimeEvent } from "../lib/realtime";
+import { tiktokBusinessMessagingService } from "./tiktok-business-messaging.service";
 
 type ConnectionPayload = {
   workspaceId: string;
@@ -50,7 +51,104 @@ const trimString = (value: unknown) => {
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
+const getFacebookAppConfig = () => {
+  const appId = trimString(env.META_APP_ID);
+  const appSecret = trimString(env.META_APP_SECRET);
+  const webhookVerifyToken = trimString(env.META_WEBHOOK_VERIFY_TOKEN);
+
+  return {
+    appId,
+    appSecret,
+    webhookVerifyToken,
+    isConfigured: !!appId && !!appSecret && !!webhookVerifyToken,
+  };
+};
+
+const formatProviderStatusError = (
+  provider: string,
+  statusCode: unknown,
+  statusMessage: unknown,
+  fallback: string
+) => {
+  const code = typeof statusCode === "number" ? String(statusCode) : "unknown";
+  const message = trimString(statusMessage) || fallback;
+  return `${provider} error (status=${code}): ${message}`;
+};
+
 class ChannelConnectionService {
+  async rehookConnections(params: { workspaceId?: string }) {
+    const query: Record<string, unknown> = {};
+    if (params.workspaceId) {
+      query.workspaceId = params.workspaceId;
+    }
+
+    const connections = await ChannelConnectionModel.find(query).sort({ createdAt: 1 });
+    const results: Array<{
+      connectionId: string;
+      channel: CanonicalChannel;
+      workspaceId: string;
+      status: ChannelConnectionStatus;
+      webhookVerified: boolean;
+      verificationState: ChannelConnectionVerificationState;
+      webhookUrl: string | null;
+      lastError: string | null;
+    }> = [];
+
+    for (const connection of connections) {
+      const validation = await this.validateConnection(connection.channel, {
+        workspaceId: String(connection.workspaceId),
+        displayName: connection.displayName,
+        externalAccountId: connection.externalAccountId,
+        credentials: connection.credentials ?? {},
+        webhookConfig: connection.webhookConfig ?? {},
+      });
+
+      const updated = await ChannelConnectionModel.findByIdAndUpdate(
+        connection._id,
+        {
+          $set: {
+            displayName: validation.displayName,
+            externalAccountId: validation.externalAccountId,
+            credentials: validation.credentials,
+            webhookConfig: validation.webhookConfig,
+            webhookUrl: validation.webhookUrl,
+            webhookVerified: validation.webhookVerified,
+            verificationState: validation.verificationState,
+            status: validation.status,
+            lastError: validation.lastError,
+            capabilities: adapterRegistry.get(connection.channel).getCapabilities(),
+          },
+        },
+        { new: true }
+      );
+
+      if (!updated) {
+        continue;
+      }
+
+      emitRealtimeEvent("connection.updated", {
+        workspaceId: String(updated.workspaceId),
+        connectionId: String(updated._id),
+        channel: updated.channel,
+        status: updated.status,
+        verificationState: updated.verificationState,
+      });
+
+      results.push({
+        connectionId: String(updated._id),
+        channel: updated.channel,
+        workspaceId: String(updated.workspaceId),
+        status: updated.status,
+        webhookVerified: !!updated.webhookVerified,
+        verificationState: updated.verificationState,
+        webhookUrl: updated.webhookUrl ?? null,
+        lastError: updated.lastError ?? null,
+      });
+    }
+
+    return results;
+  }
+
   async createConnection(
     channel: CanonicalChannel,
     payload: ConnectionPayload
@@ -131,6 +229,104 @@ class ChannelConnectionService {
     });
 
     return connection;
+  }
+
+  async revalidateExistingConnection(
+    id: string,
+    workspaceId: string,
+    patch: Partial<ConnectionPayload> = {}
+  ): Promise<ChannelConnectionDocument> {
+    const existing = await ChannelConnectionModel.findById(id);
+
+    if (!existing) {
+      throw new NotFoundError("Channel connection not found");
+    }
+
+    if (String(existing.workspaceId) !== workspaceId) {
+      throw new ForbiddenError("Channel connection does not belong to active workspace");
+    }
+
+    const mergedCredentials = {
+      ...(existing.credentials ?? {}),
+      ...(patch.credentials ?? {}),
+    };
+    const mergedWebhookConfig = {
+      ...(existing.webhookConfig ?? {}),
+      ...(patch.webhookConfig ?? {}),
+    };
+
+    const validation = await this.validateConnection(existing.channel, {
+      workspaceId: String(existing.workspaceId),
+      displayName: patch.displayName ?? existing.displayName,
+      externalAccountId: patch.externalAccountId ?? existing.externalAccountId,
+      credentials: mergedCredentials,
+      webhookConfig: mergedWebhookConfig,
+    });
+
+    const connection = await ChannelConnectionModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          displayName: validation.displayName,
+          externalAccountId: validation.externalAccountId,
+          credentials: validation.credentials,
+          webhookConfig: validation.webhookConfig,
+          webhookUrl: validation.webhookUrl,
+          webhookVerified: validation.webhookVerified,
+          verificationState: validation.verificationState,
+          status: validation.status,
+          lastError: validation.lastError,
+          capabilities: adapterRegistry.get(existing.channel).getCapabilities(),
+        },
+      },
+      { new: true }
+    );
+
+    if (!connection) {
+      throw new NotFoundError("Channel connection not found");
+    }
+
+    emitRealtimeEvent("connection.updated", {
+      workspaceId: String(connection.workspaceId),
+      connectionId: String(connection._id),
+      channel: connection.channel,
+      status: connection.status,
+      verificationState: connection.verificationState,
+    });
+
+    return connection;
+  }
+
+  async deleteConnection(id: string) {
+    const connection = await ChannelConnectionModel.findByIdAndDelete(id);
+
+    if (!connection) {
+      throw new NotFoundError("Channel connection not found");
+    }
+
+    emitRealtimeEvent("connection.updated", {
+      workspaceId: String(connection.workspaceId),
+      connectionId: String(connection._id),
+      channel: connection.channel,
+      status: "inactive",
+      verificationState: "unverified",
+    });
+
+    return connection;
+  }
+
+  async deleteConnectionInWorkspace(id: string, workspaceId: string) {
+    const existing = await ChannelConnectionModel.findById(id);
+
+    if (!existing) {
+      throw new NotFoundError("Channel connection not found");
+    }
+
+    if (String(existing.workspaceId) !== workspaceId) {
+      throw new ForbiddenError("Channel connection does not belong to active workspace");
+    }
+
+    return this.deleteConnection(id);
   }
 
   async validateConnection(
@@ -288,49 +484,37 @@ class ChannelConnectionService {
     return connection;
   }
 
-  async resolveFacebookVerificationToken(verifyToken: string) {
-    const connection = await ChannelConnectionModel.findOne({
+  async markFacebookWebhookVerified() {
+    const webhookUrl = this.buildWebhookUrl("facebook") || undefined;
+    const query: Record<string, unknown> = {
       channel: "facebook",
-      "credentials.verifyToken": verifyToken,
-    });
+    };
 
-    if (!connection) {
-      throw new NotFoundError("No Facebook connection matched the verify token");
+    if (webhookUrl) {
+      query.webhookUrl = webhookUrl;
     }
 
-    emitRealtimeEvent("connection.updated", {
-      workspaceId: String(connection.workspaceId),
-      connectionId: String(connection._id),
-      channel: connection.channel,
-      status: connection.status,
-      verificationState: connection.verificationState,
+    await ChannelConnectionModel.updateMany(query, {
+      $set: {
+        webhookVerified: true,
+        verificationState: "verified",
+        status: "active",
+        lastError: null,
+      },
     });
 
-    return connection;
-  }
-
-  async markFacebookWebhookVerified(verifyToken: string) {
-    const connection = await ChannelConnectionModel.findOneAndUpdate(
-      {
-        channel: "facebook",
-        "credentials.verifyToken": verifyToken,
-      },
-      {
-        $set: {
-          webhookVerified: true,
-          verificationState: "verified",
-          status: "active",
-          lastError: null,
-        },
-      },
-      { new: true }
-    );
-
-    if (!connection) {
-      throw new NotFoundError("No Facebook connection matched the verify token");
+    const connections = await ChannelConnectionModel.find(query);
+    for (const connection of connections) {
+      emitRealtimeEvent("connection.updated", {
+        workspaceId: String(connection.workspaceId),
+        connectionId: String(connection._id),
+        channel: connection.channel,
+        status: connection.status,
+        verificationState: connection.verificationState,
+      });
     }
 
-    return connection;
+    return connections;
   }
 
   async resolveTelegramConnection(webhookSecret: string) {
@@ -352,34 +536,51 @@ class ChannelConnectionService {
   async resolveViberConnection(
     connectionKey?: string
   ): Promise<ChannelConnectionDocument> {
-    if (connectionKey) {
-      const keyedConnection = await ChannelConnectionModel.findOne({
-        channel: "viber",
-        "webhookConfig.connectionKey": connectionKey,
-        status: "active",
-      });
-
-      if (keyedConnection) {
-        return keyedConnection;
-      }
-    }
-
-    const activeConnections = await ChannelConnectionModel.find({
-      channel: "viber",
-      status: "active",
-    });
-
-    if (activeConnections.length === 1) {
-      return activeConnections[0];
-    }
-
-    if (activeConnections.length > 1) {
-      throw new ConflictError(
-        "Multiple active Viber connections exist. Configure a connectionKey to disambiguate inbound requests."
+    const normalizedKey = trimString(connectionKey);
+    if (!normalizedKey) {
+      throw new ValidationError(
+        "Viber webhook connectionKey is required for runtime resolution"
       );
     }
 
-    throw new NotFoundError("No active Viber connection found");
+    const keyedConnection = await ChannelConnectionModel.findOne({
+      channel: "viber",
+      "webhookConfig.connectionKey": normalizedKey,
+      status: "active",
+    });
+
+    if (!keyedConnection) {
+      throw new NotFoundError(
+        `No active Viber connection matched connectionKey=${normalizedKey}`
+      );
+    }
+
+    return keyedConnection;
+  }
+
+  async resolveTikTokConnection(
+    businessId?: string
+  ): Promise<ChannelConnectionDocument> {
+    const normalizedBusinessId = trimString(businessId);
+    if (!normalizedBusinessId) {
+      throw new ValidationError(
+        "TikTok webhook payload is missing user_openid/business_id"
+      );
+    }
+
+    const connection = await ChannelConnectionModel.findOne({
+      channel: "tiktok",
+      externalAccountId: normalizedBusinessId,
+      status: "active",
+    });
+
+    if (!connection) {
+      throw new NotFoundError(
+        `No active TikTok connection matched business_id=${normalizedBusinessId}`
+      );
+    }
+
+    return connection;
   }
 
   serialize(connection: ChannelConnectionDocument) {
@@ -400,13 +601,13 @@ class ChannelConnectionService {
     return connections.map((connection) => this.serialize(connection));
   }
 
-  private getPublicWebhookBaseUrl() {
+  getPublicWebhookBaseUrl() {
     const baseUrl = trimTrailingSlash(env.PUBLIC_WEBHOOK_BASE_URL.trim());
     return baseUrl || "";
   }
 
   private buildWebhookUrl(
-    channel: "facebook" | "telegram" | "viber",
+    channel: "facebook" | "telegram" | "viber" | "tiktok",
     query?: Record<string, string>
   ) {
     const baseUrl = this.getPublicWebhookBaseUrl();
@@ -583,8 +784,12 @@ class ChannelConnectionService {
 
     if (accountInfoResponse.data?.status !== 0) {
       throw new ValidationError(
-        accountInfoResponse.data?.status_message ||
-        "Viber auth token validation failed"
+        formatProviderStatusError(
+          "Viber account validation",
+          accountInfoResponse.data?.status,
+          accountInfoResponse.data?.status_message,
+          "Viber auth token validation failed"
+        )
       );
     }
 
@@ -676,18 +881,33 @@ class ChannelConnectionService {
         status: success ? "active" : "error",
         lastError: success
           ? null
-          : setWebhookResponse.data?.status_message ||
-          "Viber webhook registration failed",
+          : formatProviderStatusError(
+              "Viber set_webhook",
+              setWebhookResponse.data?.status,
+              setWebhookResponse.data?.status_message,
+              "Viber webhook registration failed"
+            ),
         diagnostics: {
           provider: {
             id: account.id,
             uri: account.uri,
             name: account.name,
+            status: setWebhookResponse.data?.status,
+            statusMessage: setWebhookResponse.data?.status_message,
           },
-          webhook: setWebhookResponse.data,
+          webhook: {
+            url: webhookUrl,
+            connectionKey,
+            result: setWebhookResponse.data,
+          },
         },
       };
     } catch (error) {
+      const providerData =
+        axios.isAxiosError(error) && error.response?.data
+          ? (error.response.data as Record<string, unknown>)
+          : null;
+
       return {
         displayName:
           payload.displayName?.trim() || account.name || "Viber public account",
@@ -703,8 +923,14 @@ class ChannelConnectionService {
         webhookVerified: false,
         verificationState: "failed",
         status: "error",
-        lastError:
-          error instanceof Error
+        lastError: providerData
+          ? formatProviderStatusError(
+              "Viber set_webhook",
+              providerData.status,
+              providerData.status_message,
+              "Viber webhook registration failed"
+            )
+          : error instanceof Error
             ? error.message
             : "Viber webhook registration failed",
         diagnostics: {
@@ -712,6 +938,13 @@ class ChannelConnectionService {
             id: account.id,
             uri: account.uri,
             name: account.name,
+            status: providerData?.status,
+            statusMessage: providerData?.status_message,
+          },
+          webhook: {
+            url: webhookUrl,
+            connectionKey,
+            error: providerData ?? (error instanceof Error ? error.message : "unknown"),
           },
         },
       };
@@ -722,17 +955,10 @@ class ChannelConnectionService {
     payload: ConnectionPayload
   ): Promise<ConnectionValidationResult> {
     const pageAccessToken = trimString(payload.credentials.pageAccessToken);
-    const verifyToken =
-      trimString(payload.credentials.verifyToken) ||
-      trimString(payload.webhookConfig.verifyToken);
-    const appSecret = trimString(payload.credentials.appSecret);
+    const facebookAppConfig = getFacebookAppConfig();
 
     if (!pageAccessToken) {
       throw new ValidationError("Facebook page access token is required");
-    }
-
-    if (!verifyToken) {
-      throw new ValidationError("Facebook verify token is required");
     }
 
     const pageResponse = await axios
@@ -754,9 +980,19 @@ class ChannelConnectionService {
     }
 
     const webhookUrl = this.buildWebhookUrl("facebook");
-    const pendingReason = webhookUrl
-      ? null
-      : "PUBLIC_WEBHOOK_BASE_URL is required before Facebook webhook verification can complete.";
+    const hasVerifiedWebhook =
+      !!webhookUrl &&
+      facebookAppConfig.isConfigured &&
+      !!(await ChannelConnectionModel.exists({
+        channel: "facebook",
+        webhookVerified: true,
+        webhookUrl,
+      }));
+    const pendingReason = !facebookAppConfig.isConfigured
+      ? "Facebook Messenger app config is missing. Set META_APP_ID, META_APP_SECRET, and META_WEBHOOK_VERIFY_TOKEN on the server."
+      : !webhookUrl
+        ? "PUBLIC_WEBHOOK_BASE_URL is required before Facebook webhook verification can complete."
+        : "Complete the Meta Messenger webhook challenge for this server URL before inbound messaging can be trusted.";
 
     return {
       displayName:
@@ -766,23 +1002,24 @@ class ChannelConnectionService {
       externalAccountId: String(pageResponse.data.id),
       credentials: {
         pageAccessToken,
-        verifyToken,
-        ...(appSecret ? { appSecret } : {}),
       },
       webhookConfig: payload.webhookConfig,
       webhookUrl: webhookUrl || null,
-      webhookVerified: false,
-      verificationState: "pending",
-      status: "pending",
-      lastError: pendingReason,
+      webhookVerified: hasVerifiedWebhook,
+      verificationState: hasVerifiedWebhook ? "verified" : "pending",
+      status: hasVerifiedWebhook ? "active" : "pending",
+      lastError: hasVerifiedWebhook ? null : pendingReason,
       diagnostics: {
         provider: {
           id: pageResponse.data.id,
           name: pageResponse.data.name,
+          appIdConfigured: !!facebookAppConfig.appId,
+          appSecretConfigured: !!facebookAppConfig.appSecret,
         },
         webhook: {
           url: webhookUrl || null,
-          verified: false,
+          verifyTokenConfigured: !!facebookAppConfig.webhookVerifyToken,
+          verified: hasVerifiedWebhook,
         },
       },
     };
@@ -791,23 +1028,25 @@ class ChannelConnectionService {
   private async validateTikTokConnection(
     payload: ConnectionPayload
   ): Promise<ConnectionValidationResult> {
-    const externalAccountId =
-      payload.externalAccountId || `tiktok-experimental-${randomUUID()}`;
+    const webhookUrl = this.buildWebhookUrl("tiktok");
+    const validation = await tiktokBusinessMessagingService.validateConnection({
+      displayName: payload.displayName,
+      externalAccountId: payload.externalAccountId,
+      credentials: payload.credentials,
+      webhookUrl: webhookUrl || null,
+    });
 
     return {
-      displayName: payload.displayName?.trim() || "TikTok experimental",
-      externalAccountId,
-      credentials: payload.credentials,
+      displayName: validation.displayName,
+      externalAccountId: validation.externalAccountId,
+      credentials: validation.credentials,
       webhookConfig: payload.webhookConfig,
-      webhookUrl: null,
-      webhookVerified: false,
-      verificationState: "pending_provider_verification",
-      status: "pending",
-      lastError:
-        "TikTok messaging integration is pending provider verification and is not active in production.",
-      diagnostics: {
-        status: "pending_provider_verification",
-      },
+      webhookUrl: validation.webhookUrl,
+      webhookVerified: validation.webhookVerified,
+      verificationState: validation.verificationState,
+      status: validation.status,
+      lastError: validation.lastError,
+      diagnostics: validation.diagnostics,
     };
   }
 
@@ -829,10 +1068,25 @@ class ChannelConnectionService {
     }
 
     if (channel === "facebook") {
+      const facebookAppConfig = getFacebookAppConfig();
       return {
         pageAccessTokenConfigured: !!trimString(credentials.pageAccessToken),
-        verifyTokenConfigured: !!trimString(credentials.verifyToken),
-        appSecretConfigured: !!trimString(credentials.appSecret),
+        appIdConfigured: !!facebookAppConfig.appId,
+        appSecretConfigured: !!facebookAppConfig.appSecret,
+        webhookVerifyTokenConfigured: !!facebookAppConfig.webhookVerifyToken,
+      };
+    }
+
+    if (channel === "tiktok") {
+      const scopes = Array.isArray(credentials.scopes)
+        ? credentials.scopes.map((value) => String(value))
+        : [];
+      return {
+        accessTokenConfigured: !!trimString(credentials.accessToken),
+        refreshTokenConfigured: !!trimString(credentials.refreshToken),
+        businessIdConfigured:
+          !!trimString(credentials.businessId) || !!trimString(credentials.creatorId),
+        scopes,
       };
     }
 

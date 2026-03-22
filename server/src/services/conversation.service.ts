@@ -1,12 +1,20 @@
 import { CanonicalMessage } from "../channels/types";
-import { ContactModel, ConversationDocument, ConversationModel } from "../models";
+import {
+  ContactModel,
+  ConversationDocument,
+  ConversationModel,
+  UserModel,
+} from "../models";
 
 const buildPreviewText = (message: {
   kind: string;
   text?: { body?: string | null } | null;
   interactive?: { label?: string | null; value?: string | null } | null;
   unsupportedReason?: string | null;
+  meta?: Record<string, unknown> | null;
 }) => {
+  const providerMessageType = String(message.meta?.providerMessageType ?? "").toUpperCase();
+
   if (message.kind === "text") {
     return message.text?.body ?? "";
   }
@@ -16,6 +24,9 @@ const buildPreviewText = (message: {
   }
 
   if (message.kind === "image") {
+    if (providerMessageType === "EMOJI") {
+      return "[Emoji]";
+    }
     return "[Image]";
   }
 
@@ -37,6 +48,10 @@ const buildPreviewText = (message: {
 
   if (message.kind === "contact") {
     return "[Contact]";
+  }
+
+  if (message.kind === "sticker") {
+    return message.text?.body ?? "[Sticker]";
   }
 
   if (message.kind === "unsupported") {
@@ -108,6 +123,7 @@ class ConversationService {
       text?: { body?: string | null } | null;
       interactive?: { label?: string | null; value?: string | null } | null;
       unsupportedReason?: string | null;
+      meta?: Record<string, unknown> | null;
     };
   }) {
     return ConversationModel.findByIdAndUpdate(
@@ -133,6 +149,7 @@ class ConversationService {
       text?: { body?: string | null } | null;
       interactive?: { label?: string | null; value?: string | null } | null;
       unsupportedReason?: string | null;
+      meta?: Record<string, unknown> | null;
     };
   }) {
     return ConversationModel.findByIdAndUpdate(
@@ -187,6 +204,18 @@ class ConversationService {
       contacts.map((contact) => [String(contact._id), contact])
     );
 
+    const assigneeIds = conversations
+      .map((item) => item.assigneeUserId)
+      .filter(Boolean)
+      .map((value) => String(value));
+
+    const assignees = assigneeIds.length
+      ? await UserModel.find({ _id: { $in: assigneeIds } }).select("_id name avatarUrl")
+      : [];
+    const assigneeMap = new Map(
+      assignees.map((user) => [String(user._id), user])
+    );
+
     return conversations.map((conversation) => ({
       ...conversation.toObject(),
       contact: conversation.contactId
@@ -195,6 +224,18 @@ class ConversationService {
       contactName: conversation.contactId
         ? contactMap.get(String(conversation.contactId))?.primaryName ?? "Unknown contact"
         : "Unknown contact",
+      assignee: conversation.assigneeUserId
+        ? (() => {
+            const assignee = assigneeMap.get(String(conversation.assigneeUserId));
+            return assignee
+              ? {
+                  _id: String(assignee._id),
+                  name: assignee.name,
+                  avatarUrl: assignee.avatarUrl,
+                }
+              : null;
+          })()
+        : null,
     }));
   }
 

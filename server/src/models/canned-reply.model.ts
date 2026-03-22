@@ -10,7 +10,8 @@ const cannedReplySchema = new Schema(
     title: { type: String, required: true },
     category: { type: String, default: "general" },
     triggers: { type: [String], default: [] },
-    body: { type: String, required: true },
+    body: { type: String, default: "" },
+    blocks: { type: [Schema.Types.Mixed], default: [] },
     isActive: { type: Boolean, default: true },
   },
   {

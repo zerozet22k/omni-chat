@@ -2,42 +2,57 @@ import { FormEvent, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useSession } from "../hooks/use-session";
 
-export function LoginPage() {
-  const { session, login } = useSession();
+const POST_LOGIN_WORKSPACE_PICK_KEY = "omni-chat-post-login-workspace-pick";
 
+export function LoginPage() {
+  const { session, login, register, deployment, setActiveWorkspaceId } = useSession();
+
+  const canRegister = deployment.allowSignup && deployment.tenantMode !== "single";
+
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
+  const [timeZone, setTimeZone] = useState("Asia/Bangkok");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const trimmedName = name.trim();
   const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
   const trimmedWorkspaceSlug = workspaceSlug.trim();
   const trimmedWorkspaceName = workspaceName.trim();
 
-  const mode = useMemo(() => {
+  const workspaceMode = useMemo(() => {
     if (trimmedWorkspaceSlug) return "existing";
     if (trimmedWorkspaceName) return "new";
     return "unset";
   }, [trimmedWorkspaceSlug, trimmedWorkspaceName]);
 
-  if (session) {
+  const postLoginWorkspacePickPending =
+    typeof window !== "undefined" &&
+    window.localStorage.getItem(POST_LOGIN_WORKSPACE_PICK_KEY) === "true";
+
+  const showWorkspacePicker =
+    !!session &&
+    postLoginWorkspacePickPending &&
+    (session.workspaces?.length ?? 0) > 1;
+
+  if (session && !showWorkspacePicker) {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(POST_LOGIN_WORKSPACE_PICK_KEY);
+    }
     return <Navigate to="/inbox" replace />;
   }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (!trimmedName || !trimmedEmail) {
-      setError("Name and email are required.");
-      return;
-    }
-
-    if (!trimmedWorkspaceSlug && !trimmedWorkspaceName) {
-      setError("Enter a workspace slug or provide a new workspace name.");
+    if (!trimmedEmail || !trimmedPassword) {
+      setError("Email and password are required.");
       return;
     }
 
@@ -45,12 +60,40 @@ export function LoginPage() {
     setError(null);
 
     try {
-      await login({
-        name: trimmedName,
-        email: trimmedEmail,
-        workspaceSlug: trimmedWorkspaceSlug,
-        workspaceName: trimmedWorkspaceName || undefined,
-      });
+      if (mode === "login") {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(POST_LOGIN_WORKSPACE_PICK_KEY, "true");
+        }
+
+        await login({
+          email: trimmedEmail,
+          password: trimmedPassword,
+        });
+      } else {
+        if (!canRegister) {
+          setError("Registration is not available on this deployment.");
+          return;
+        }
+
+        if (!trimmedName) {
+          setError("Name is required to register.");
+          return;
+        }
+
+        if (!trimmedWorkspaceSlug || !trimmedWorkspaceName) {
+          setError("Workspace slug and workspace name are required for registration.");
+          return;
+        }
+
+        await register({
+          name: trimmedName,
+          email: trimmedEmail,
+          password: trimmedPassword,
+          workspaceSlug: trimmedWorkspaceSlug,
+          workspaceName: trimmedWorkspaceName,
+          timeZone,
+        });
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Login failed.");
     } finally {
@@ -67,7 +110,7 @@ export function LoginPage() {
           <div className="relative flex h-full flex-col justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Unified Chat
+                Elqen Zero
               </p>
 
               <h1 className="mt-6 max-w-md text-4xl font-semibold tracking-tight text-white">
@@ -96,9 +139,13 @@ export function LoginPage() {
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                <p className="text-sm font-medium text-white">Workspace-based access</p>
+                <p className="text-sm font-medium text-white">
+                  {mode === "login" ? "Secure sign in" : "Workspace onboarding"}
+                </p>
                 <p className="mt-1 text-sm text-slate-300">
-                  Join an existing workspace by slug or create a new empty workspace to start fresh.
+                  {mode === "login"
+                    ? "Sign in with your existing account, then pick your workspace if you belong to multiple."
+                    : "Registration creates your first workspace and signs you in as owner."}
                 </p>
               </div>
             </div>
@@ -109,25 +156,52 @@ export function LoginPage() {
           <div className="w-full max-w-lg">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Unified Chat
+                Elqen Zero
               </p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
-                Open workspace
+                {mode === "login" ? "Sign in" : "Create account"}
               </h2>
               <p className="mt-2 text-sm text-slate-500">
-                Enter an existing workspace slug, or leave slug empty and provide a
-                workspace name to create a new workspace.
+                {mode === "login"
+                  ? "Sign in with your account to continue."
+                  : "Register a new account and create your first workspace."}
               </p>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
-                {mode === "existing"
-                  ? "Joining existing workspace"
-                  : mode === "new"
-                    ? "Creating new workspace"
-                    : "Choose workspace mode"}
-              </span>
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1 ${
+                  mode === "login"
+                    ? "bg-slate-900 text-white ring-slate-900"
+                    : "bg-slate-100 text-slate-700 ring-slate-200"
+                }`}
+              >
+                Login
+              </button>
+              {canRegister ? (
+                <button
+                  type="button"
+                  onClick={() => setMode("register")}
+                  className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1 ${
+                    mode === "register"
+                      ? "bg-slate-900 text-white ring-slate-900"
+                      : "bg-slate-100 text-slate-700 ring-slate-200"
+                  }`}
+                >
+                  Register
+                </button>
+              ) : null}
+              {canRegister && mode === "register" ? (
+                <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+                  {workspaceMode === "existing"
+                    ? "Using provided slug"
+                    : workspaceMode === "new"
+                    ? "Creating workspace"
+                    : "Provide workspace details"}
+                </span>
+              ) : null}
             </div>
 
             {error ? (
@@ -136,18 +210,49 @@ export function LoginPage() {
               </div>
             ) : null}
 
+            {showWorkspacePicker && session ? (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-900">Choose workspace</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your account belongs to multiple workspaces. Select one to continue.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {session.workspaces.map((workspace) => (
+                    <button
+                      key={workspace._id}
+                      type="button"
+                      onClick={() => {
+                        setActiveWorkspaceId(workspace._id);
+                        if (typeof window !== "undefined") {
+                          window.localStorage.removeItem(POST_LOGIN_WORKSPACE_PICK_KEY);
+                        }
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm text-slate-900 transition hover:border-slate-900"
+                    >
+                      <span className="font-medium">{workspace.name}</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-slate-500">{workspace.role}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-slate-900">
-                  Name
-                </span>
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your name"
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </label>
+              {mode === "register" ? (
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                    Name
+                  </span>
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Your name"
+                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  />
+                </label>
+              ) : null}
 
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-slate-900">
@@ -162,43 +267,80 @@ export function LoginPage() {
                 />
               </label>
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-900">
-                    Workspace slug
-                  </span>
-                  <input
-                    value={workspaceSlug}
-                    onChange={(event) => setWorkspaceSlug(event.target.value)}
-                    placeholder="existing-workspace"
-                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                  />
-                  <p className="mt-1.5 text-xs text-slate-500">
-                    Use this to open an existing workspace.
-                  </p>
-                </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                  Password
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Your password"
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                />
+              </label>
 
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-900">
-                    Workspace name
-                  </span>
-                  <input
-                    value={workspaceName}
-                    onChange={(event) => setWorkspaceName(event.target.value)}
-                    placeholder="New workspace"
-                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                  />
-                  <p className="mt-1.5 text-xs text-slate-500">
-                    Used only when creating a new workspace.
-                  </p>
-                </label>
-              </div>
+              {mode === "register" ? (
+                <>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                        Workspace slug
+                      </span>
+                      <input
+                        value={workspaceSlug}
+                        onChange={(event) => setWorkspaceSlug(event.target.value)}
+                        placeholder="my-workspace"
+                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        Required during registration.
+                      </p>
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                        Workspace name
+                      </span>
+                      <input
+                        value={workspaceName}
+                        onChange={(event) => setWorkspaceName(event.target.value)}
+                        placeholder="My Workspace"
+                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                      />
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        Required during registration.
+                      </p>
+                    </label>
+                  </div>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                      Time zone
+                    </span>
+                    <input
+                      value={timeZone}
+                      onChange={(event) => setTimeZone(event.target.value)}
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                    />
+                  </label>
+                </>
+              ) : null}
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm font-medium text-slate-900">How it works</p>
                 <ul className="mt-2 space-y-1.5 text-sm text-slate-500">
-                  <li>Provide a workspace slug to join an existing workspace.</li>
-                  <li>Or leave slug empty and enter a workspace name to create a new one.</li>
+                  {mode === "login" ? (
+                    <>
+                      <li>Use your registered account email and password.</li>
+                      <li>Your available workspaces are loaded after login.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Registration creates your account and first workspace.</li>
+                      <li>Your account is added as workspace owner.</li>
+                    </>
+                  )}
                 </ul>
               </div>
 
@@ -207,9 +349,16 @@ export function LoginPage() {
                 disabled={submitting}
                 type="submit"
               >
-                {submitting ? "Opening workspace..." : "Open workspace"}
+                {submitting
+                  ? mode === "login"
+                    ? "Signing in..."
+                    : "Creating account..."
+                  : mode === "login"
+                  ? "Sign in"
+                  : "Create account"}
               </button>
             </form>
+            )}
           </div>
         </section>
       </div>

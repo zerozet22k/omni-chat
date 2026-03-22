@@ -1,0 +1,39 @@
+# Elqen Zero
+
+Elqen Zero is a commercial omni-channel customer communication platform built to manage business conversations across multiple messaging channels in one unified system.
+
+It combines a shared inbox, channel integrations, AI-assisted replies, after-hours automation, knowledge-based response workflows, canned replies, conversation states, audit logs, and human handoff controls for real operational use.
+
+## Features
+
+- Unified inbox for multi-channel customer conversations
+- Canonical message model across different platforms
+- AI-assisted and knowledge-based replies
+- Canned reply matching
+- Confidence-aware automation decisions
+- After-hours automation with business hour controls
+- Human escalation, takeover, and return-to-bot flows
+- Contact and conversation management
+- Assignment, tags, filters, and conversation history
+- Automation audit logs and oversight controls
+- Support for channels such as Facebook, Telegram, Viber, and TikTok
+
+## Use Cases
+
+- Education service support
+- Social-commerce inbox operations
+- Product support teams
+- Customer service and sales chat handling
+- Businesses needing one inbox for multiple messaging channels
+
+## Suggested Stack
+
+- Node.js
+- TypeScript
+- MongoDB
+- React or Next.js
+- Gemini or another LLM provider
+
+## License
+
+All rights reserved. This source code is not licensed for public reuse, redistribution, resale, or deployment without prior written permission from the author.

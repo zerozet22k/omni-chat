@@ -70,7 +70,7 @@ export function ChannelConnectionCard({
           <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
             Verification
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-900">
+          <p className="mt-1 text-sm font-medium text-slate-900 capitalize">
             {connection.verificationState}
           </p>
         </div>

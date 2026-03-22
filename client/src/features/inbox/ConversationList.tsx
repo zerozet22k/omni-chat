@@ -1,94 +1,194 @@
 import { Conversation } from "../../types/models";
-import { ChannelBadge } from "./ChannelBadge";
 
-function ConversationStatusBadge({ status }: { status: Conversation["status"] }) {
-  const className =
-    status === "open"
-      ? "bg-blue-50 text-blue-700 ring-blue-200"
-      : status === "pending"
-        ? "bg-amber-50 text-amber-700 ring-amber-200"
-        : "bg-emerald-50 text-emerald-700 ring-emerald-200";
+function getPreviewText(input?: string) {
+  if (!input) {
+    return "New conversation";
+  }
+
+  const normalized = input.trim().toLowerCase();
+  if (normalized === "[image]") return "User has sent image";
+  if (normalized === "[video]") return "User has sent video";
+  if (normalized === "[audio]") return "User has sent audio";
+  if (normalized === "[file]") return "User has sent file";
+  if (normalized === "[location]") return "User has sent location";
+  if (normalized === "[contact]") return "User has sent contact";
+  if (normalized === "[sticker]") return "User has sent sticker";
+  if (normalized === "[emoji]") return "User has sent emoji";
+  return input;
+}
+
+function ChannelIcon({ channel }: { channel: Conversation["channel"] }) {
+  const src =
+    channel === "telegram"
+      ? "/platform-icons/telegram.svg"
+      : channel === "facebook"
+        ? "/platform-icons/facebook.svg"
+        : channel === "viber"
+          ? "/platform-icons/viber.svg"
+          : "/platform-icons/tiktok.svg";
+
+  const fallback =
+    channel === "telegram"
+      ? "T"
+      : channel === "facebook"
+        ? "F"
+        : channel === "viber"
+          ? "V"
+          : "T";
 
   return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium capitalize ring-1 ${className}`}
-    >
-      {status}
+    <span title={channel} className="inline-flex h-4 w-4 items-center justify-center overflow-hidden rounded-full bg-slate-100">
+      <img
+        src={src}
+        alt={channel}
+        className="h-full w-full object-cover"
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
+          const sibling = event.currentTarget.nextElementSibling as HTMLElement | null;
+          if (sibling) {
+            sibling.style.display = "inline-flex";
+          }
+        }}
+      />
+      <span className="hidden h-full w-full items-center justify-center text-[9px] font-semibold text-slate-600">
+        {fallback}
+      </span>
     </span>
   );
 }
 
+function formatTime(date?: string | Date): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const now = new Date();
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+  return isToday
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+const statusDotClass: Record<string, string> = {
+  open: "bg-blue-400",
+  pending: "bg-amber-400",
+  resolved: "bg-emerald-400",
+};
+
 export function ConversationList(props: {
   conversations: Conversation[];
   selectedConversationId?: string;
-  onSelect: (conversationId: string) => void;
+  currentUserId?: string | null;
+  onSelect: (conversation: Conversation) => void;
 }) {
   if (!props.conversations.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+      <div className="px-4 py-8 text-center text-sm text-slate-400">
         No conversations found.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div>
       {props.conversations.map((conversation) => {
         const isSelected = props.selectedConversationId === conversation._id;
         const unreadCount = conversation.unreadCount ?? 0;
+        const initials = (conversation.contactName || "?")[0].toUpperCase();
+        const avatarUrl =
+          conversation.contact?.channelIdentities?.find(
+            (identity) =>
+              identity.channel === conversation.channel &&
+              typeof identity.avatar === "string" &&
+              identity.avatar.trim().length > 0
+          )?.avatar ??
+          conversation.contact?.channelIdentities?.find(
+            (identity) =>
+              typeof identity.avatar === "string" &&
+              identity.avatar.trim().length > 0
+          )?.avatar;
+
+        const platforms = Array.from(
+          new Set([
+            conversation.channel,
+            ...(conversation.contact?.channelIdentities?.map((identity) => identity.channel) ?? []),
+          ])
+        );
+
+        const assigneeName = conversation.assignee?.name?.trim();
+        const isManagedByCurrentUser =
+          !!conversation.assignee?._id &&
+          !!props.currentUserId &&
+          conversation.assignee._id === props.currentUserId;
 
         return (
           <button
             key={conversation._id}
             type="button"
-            onClick={() => props.onSelect(conversation._id)}
+            onClick={() => props.onSelect(conversation)}
             className={[
-              "block w-full rounded-2xl border p-4 text-left transition",
-              "focus:outline-none focus:ring-2 focus:ring-slate-300",
-              isSelected
-                ? "border-slate-900 bg-slate-50 shadow-sm"
-                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70",
+              "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+              isSelected ? "bg-slate-100" : "hover:bg-slate-50",
             ].join(" ")}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <ChannelBadge channel={conversation.channel} />
-
-                  {unreadCount > 0 ? (
-                    <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200">
-                      {unreadCount} unread
-                    </span>
-                  ) : (
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                      No unread
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="mt-3 truncate text-sm font-semibold text-slate-900">
-                  {conversation.contactName || "Unknown contact"}
-                </h3>
-
-                <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">
-                  {conversation.lastMessageText || "New conversation"}
-                </p>
-              </div>
-
-              <div className="shrink-0 text-right">
-                <p className="text-xs text-slate-500">
-                  {conversation.lastMessageAt
-                    ? new Date(conversation.lastMessageAt).toLocaleString()
-                    : "Waiting"}
-                </p>
-              </div>
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
+              {initials}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={conversation.contactName || "Contact avatar"}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : null}
+              <span
+                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                  statusDotClass[conversation.status] ?? "bg-slate-300"
+                }`}
+              />
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <ConversationStatusBadge status={conversation.status} />
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex items-center gap-1">
+                {platforms.map((platform) => (
+                  <ChannelIcon key={`${conversation._id}-${platform}`} channel={platform} />
+                ))}
+              </div>
 
-              {isSelected ? (
-                <span className="text-xs font-medium text-slate-700">Selected</span>
+              <div className="flex items-baseline justify-between gap-1">
+                <span
+                  className={`truncate text-sm ${
+                    unreadCount > 0
+                      ? "font-semibold text-slate-900"
+                      : "font-medium text-slate-700"
+                  }`}
+                >
+                  {conversation.contactName || "Unknown"}
+                </span>
+                <span className="shrink-0 text-[11px] text-slate-400">
+                  {formatTime(conversation.lastMessageAt)}
+                </span>
+              </div>
+              <div className="mt-0.5 flex items-center justify-between gap-1">
+                <p className="truncate text-xs text-slate-500">
+                  {getPreviewText(conversation.lastMessageText)}
+                </p>
+                {unreadCount > 0 ? (
+                  <span className="ml-1 flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount}
+                  </span>
+                ) : null}
+              </div>
+
+              {assigneeName ? (
+                <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                  {isManagedByCurrentUser
+                    ? "Managed by you"
+                    : `Managed by ${assigneeName}`}
+                </p>
               ) : null}
             </div>
           </button>

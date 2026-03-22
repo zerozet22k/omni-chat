@@ -16,6 +16,16 @@ const aiSettingsSchema = new Schema(
       type: String,
       default: "Thanks for your message. A teammate will follow up soon.",
     },
+    // Workspace-owned AI provider overrides (stored encrypted at rest).
+    // Use the AI settings API to set/remove; the raw value is never returned to clients.
+    geminiApiKey: { type: String, default: "" },
+    geminiModel: { type: String, default: "" },
+    supportedChannels: {
+      facebook: { type: Boolean, default: true },
+      telegram: { type: Boolean, default: true },
+      viber: { type: Boolean, default: true },
+      tiktok: { type: Boolean, default: true },
+    },
   },
   {
     collection: "ai_settings",

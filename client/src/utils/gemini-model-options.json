@@ -1,0 +1,29 @@
+{
+  "models": [
+    {
+      "value": "gemini-2.0-flash-lite",
+      "label": "Gemini 2.0 Flash Lite",
+      "description": "Fast and cost-efficient (recommended)"
+    },
+    {
+      "value": "gemini-2.0-flash",
+      "label": "Gemini 2.0 Flash",
+      "description": "Balanced speed and quality"
+    },
+    {
+      "value": "gemini-1.5-flash",
+      "label": "Gemini 1.5 Flash",
+      "description": "Reliable multimodal model"
+    },
+    {
+      "value": "gemini-1.5-flash-8b",
+      "label": "Gemini 1.5 Flash 8B",
+      "description": "Lightweight, lower cost"
+    },
+    {
+      "value": "gemini-1.5-pro",
+      "label": "Gemini 1.5 Pro",
+      "description": "High capability, higher cost"
+    }
+  ]
+}

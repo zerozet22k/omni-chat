@@ -4,11 +4,72 @@ import { CanonicalMessage, OutboundCommand } from "../channels/types";
 import { CapabilityError, NotFoundError, ValidationError } from "../lib/errors";
 import { auditLogService } from "./audit-log.service";
 import { channelConnectionService } from "./channel-connection.service";
+import { channelSupportService } from "./channel-support.service";
 import { conversationService } from "./conversation.service";
 import { messageService } from "./message.service";
+import { tiktokBusinessMessagingService } from "./tiktok-business-messaging.service";
 import { emitRealtimeEvent } from "../lib/realtime";
 
 class OutboundMessageService {
+  private validateProviderOutboundCommand(channel: string, command: OutboundCommand) {
+    if (channel === "viber") {
+      if (command.kind === "video") {
+        const media = command.media?.[0];
+        if (!media?.size) {
+          throw new ValidationError("Viber video outbound requires media[0].size");
+        }
+        if (!media.durationMs) {
+          throw new ValidationError("Viber video outbound requires media[0].durationMs");
+        }
+      }
+
+      if (command.kind === "file") {
+        const media = command.media?.[0];
+        if (!media?.size) {
+          throw new ValidationError("Viber file outbound requires media[0].size");
+        }
+        if (!media.filename) {
+          throw new ValidationError("Viber file outbound requires media[0].filename");
+        }
+      }
+
+      if (command.kind === "sticker") {
+        const platformStickerId = String(command.meta?.platformStickerId ?? "").trim();
+        if (!platformStickerId) {
+          throw new ValidationError("Viber sticker outbound requires meta.platformStickerId");
+        }
+        if (!/^\d+$/.test(platformStickerId)) {
+          throw new ValidationError(
+            "Viber sticker outbound requires numeric meta.platformStickerId"
+          );
+        }
+      }
+
+      return;
+    }
+
+    if (channel === "tiktok" && command.kind === "image") {
+      const media = command.media?.[0];
+      const mimeType = String(media?.mimeType ?? "").toLowerCase();
+      if (command.text?.body?.trim()) {
+        throw new ValidationError(
+          "TikTok image outbound does not support text and image in the same message. Send separate blocks."
+        );
+      }
+      if (media?.size && media.size > 3 * 1024 * 1024) {
+        throw new ValidationError("TikTok image outbound exceeds the 3 MB limit");
+      }
+      if (
+        mimeType &&
+        mimeType !== "image/jpeg" &&
+        mimeType !== "image/png" &&
+        mimeType !== "image/jpg"
+      ) {
+        throw new ValidationError("TikTok image outbound only supports JPG and PNG files");
+      }
+    }
+  }
+
   async send(params: {
     conversationId: string;
     command: OutboundCommand;
@@ -17,6 +78,16 @@ class OutboundMessageService {
     const conversation = await conversationService.getById(params.conversationId);
     if (!conversation) {
       throw new NotFoundError("Conversation not found");
+    }
+
+    const channelEnabled = await channelSupportService.isChannelEnabled(
+      String(conversation.workspaceId),
+      conversation.channel
+    );
+    if (!channelEnabled) {
+      throw new ValidationError(
+        `Channel ${conversation.channel} is disabled in workspace admin settings.`
+      );
     }
 
     const connection = await channelConnectionService.getConnectionByWorkspaceAndChannel({
@@ -40,6 +111,21 @@ class OutboundMessageService {
       );
     }
 
+    this.validateProviderOutboundCommand(conversation.channel, params.command);
+
+    if (conversation.channel === "tiktok") {
+      const refreshedCredentials =
+        await tiktokBusinessMessagingService.ensureValidConnectionCredentials(
+          tiktokBusinessMessagingService.normalizeConnectionCredentials(
+            (connection.credentials ?? {}) as Record<string, unknown>,
+            conversation.channelAccountId
+          )
+        );
+      connection.credentials =
+        tiktokBusinessMessagingService.serializeCredentials(refreshedCredentials);
+      await connection.save();
+    }
+
     const canonicalMessage: CanonicalMessage = {
       channel: conversation.channel,
       channelAccountId: conversation.channelAccountId,
@@ -50,6 +136,9 @@ class OutboundMessageService {
       kind: params.command.kind,
       text: params.command.text,
       media: params.command.media,
+      location: params.command.location,
+      contact: params.command.contact,
+      interactive: params.command.interactive,
       occurredAt: params.command.occurredAt ?? new Date(),
       raw: {
         queuedAt: new Date().toISOString(),

@@ -18,6 +18,16 @@ const mediaSchema = new Schema(
     durationMs: { type: Number },
     providerFileId: { type: String },
     thumbnailUrl: { type: String },
+    isTemporary: { type: Boolean, default: false },
+    expiresAt: { type: Date, default: null },
+    expirySource: {
+      type: String,
+      enum: ["provider_ttl", "signed_url", "unknown"],
+      default: null,
+    },
+    lastValidatedAt: { type: Date, default: null },
+    storedAssetId: { type: String, default: null },
+    storedAssetUrl: { type: String, default: null },
   },
   { _id: false }
 );

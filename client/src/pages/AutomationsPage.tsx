@@ -68,7 +68,7 @@ function DayScheduleRow({
   return (
     <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center justify-between gap-4 lg:min-w-[180px]">
+        <div className="flex items-center justify-between gap-4 lg:min-w-45">
           <div>
             <p className="text-sm font-medium text-slate-900">{label}</p>
             <p className="mt-1 text-xs text-slate-500">
@@ -132,8 +132,8 @@ function DayScheduleRow({
 }
 
 export function AutomationsPage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [timeZone, setTimeZone] = useState("UTC");
   const [schedule, setSchedule] = useState<BusinessHoursDay[]>(defaultSchedule());
@@ -322,8 +322,9 @@ export function AutomationsPage() {
               Business hours and after-hours reply policy
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Define your weekly operating window and configure the fallback
-              reply used outside business hours.
+              Define your staff&rsquo;s weekly working hours and configure the
+              automated reply sent to customers who contact you outside those
+              hours.
             </p>
           </div>
 
@@ -335,7 +336,7 @@ export function AutomationsPage() {
                 : "bg-slate-100 text-slate-600 ring-slate-200",
             ].join(" ")}
           >
-            {isActive ? "Rule active" : "Rule inactive"}
+            {isActive ? "After-hours reply on" : "After-hours reply off"}
           </span>
         </div>
       </header>
@@ -355,7 +356,8 @@ export function AutomationsPage() {
             Rule configuration
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Manage the after-hours automation and the message customers receive.
+            Configure the automated reply sent to customers when your team is
+            offline. This only fires when using the AI auto-reply feature.
           </p>
         </div>
 
@@ -386,8 +388,8 @@ export function AutomationsPage() {
         </div>
 
         <ToggleRow
-          label="Rule active"
-          description="When enabled, the after-hours policy can send an automated fallback reply."
+          label="After-hours reply enabled"
+          description="When enabled, customers who message outside your staff working hours automatically receive the fallback reply below."
           checked={isActive}
           onChange={setIsActive}
         />
@@ -416,10 +418,12 @@ export function AutomationsPage() {
         <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div>
             <h4 className="text-sm font-semibold text-slate-900">
-              Weekly schedule
+              Staff working hours
             </h4>
             <p className="mt-1 text-sm text-slate-500">
-              Set business hours for each day. Disabled days are treated as closed.
+              Set the hours your team is available each day. Messages received
+              outside these windows are treated as after-hours. Disabled days
+              are treated as fully closed.
             </p>
           </div>
 
@@ -438,7 +442,7 @@ export function AutomationsPage() {
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
           <p className="text-sm text-slate-500">
-            Changes apply to workspace-level automation rules.
+            Changes apply immediately to the workspace-level after-hours rule.
           </p>
 
           <button

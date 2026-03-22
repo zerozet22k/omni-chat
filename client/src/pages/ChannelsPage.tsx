@@ -2,15 +2,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "../hooks/use-session";
 import { apiRequest } from "../services/api";
 import { connectWorkspaceSocket } from "../services/realtime";
-import { Channel, ChannelConnection } from "../types/models";
-import { ChannelConnectionCard } from "../features/channels/ChannelConnectionCard";
+import { AISettings, Channel, ChannelConnection } from "../types/models";
 import { StatusBadge } from "../features/ui/StatusBadge";
 
 const channelOptions: Channel[] = ["facebook", "telegram", "viber", "tiktok"];
-const apiBase =
-  import.meta.env.VITE_API_URL ??
-  import.meta.env.REACT_APP_API_URL ??
-  "http://localhost:4000";
 
 type ConnectionDiagnostics = {
   status: string;
@@ -20,18 +15,33 @@ type ConnectionDiagnostics = {
   diagnostics?: Record<string, unknown>;
 };
 
+type ChannelsResponse = {
+  items: ChannelConnection[];
+  publicWebhookBaseUrl: string;
+};
+
 type ChannelFormState = {
   displayName: string;
   token: string;
+  refreshToken: string;
+  businessId: string;
   webhookSecret: string;
   verifyToken: string;
   appSecret: string;
   connectionKey: string;
 };
 
+type FacebookOAuthPage = {
+  id: string;
+  name: string;
+  accessToken: string;
+};
+
 const initialFormState: ChannelFormState = {
   displayName: "",
   token: "",
+  refreshToken: "",
+  businessId: "",
   webhookSecret: "",
   verifyToken: "",
   appSecret: "",
@@ -44,33 +54,51 @@ const channelMeta: Record<
     label: string;
     description: string;
     credentialHint: string;
-    webhookPath?: string;
   }
 > = {
   facebook: {
     label: "Facebook",
-    description: "Connect a Facebook Page with webhook verification.",
-    credentialHint: "Requires page access token and verify token.",
-    webhookPath: "/webhooks/facebook",
+    description: "Connect a Facebook Page to handle Messenger conversations from this workspace.",
+    credentialHint:
+      "Provide a Page access token for this connection. META_APP_ID, META_APP_SECRET, and META_WEBHOOK_VERIFY_TOKEN remain configured on the server.",
   },
   telegram: {
     label: "Telegram",
     description: "Connect a Telegram bot and register its webhook.",
     credentialHint: "Requires bot token. Webhook secret is optional.",
-    webhookPath: "/webhooks/telegram",
   },
   viber: {
     label: "Viber",
     description: "Connect a Viber bot and map inbound traffic with a connection key.",
     credentialHint: "Requires auth token. Connection key is optional.",
-    webhookPath: "/webhooks/viber?connectionKey=your-key",
   },
   tiktok: {
     label: "TikTok",
-    description: "Scaffold-only until business messaging support is confirmed.",
-    credentialHint: "Provider integration is not yet active.",
+    description: "Connect a TikTok Business Account for direct-message inbox support.",
+    credentialHint:
+      "Requires a TikTok Business access token. App ID and secret stay on the server via env vars.",
   },
 };
+
+const trimTrailingSlash = (value: string) => value.trim().replace(/\/+$/, "");
+
+function buildWebhookPreviewUrl(params: {
+  baseUrl: string;
+  channel: Channel;
+  connectionKey?: string;
+}) {
+  const normalizedBaseUrl = trimTrailingSlash(params.baseUrl);
+  if (!normalizedBaseUrl) {
+    return "";
+  }
+
+  const url = new URL(`/webhooks/${params.channel}`, `${normalizedBaseUrl}/`);
+  if (params.channel === "viber") {
+    url.searchParams.set("connectionKey", params.connectionKey?.trim() || "your-key");
+  }
+
+  return url.toString();
+}
 
 
 
@@ -114,10 +142,20 @@ function ProviderFields({
   channel,
   form,
   setForm,
+  facebookOAuthBusy,
+  facebookOAuthPages,
+  selectedFacebookPageId,
+  onLaunchFacebookOAuth,
+  onSelectFacebookPage,
 }: {
   channel: Channel;
   form: ChannelFormState;
   setForm: React.Dispatch<React.SetStateAction<ChannelFormState>>;
+  facebookOAuthBusy: boolean;
+  facebookOAuthPages: FacebookOAuthPage[];
+  selectedFacebookPageId: string;
+  onLaunchFacebookOAuth: () => Promise<void>;
+  onSelectFacebookPage: (pageId: string) => void;
 }) {
   const inputClass =
     "h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200";
@@ -132,6 +170,7 @@ function ProviderFields({
             onChange={(event) =>
               setForm((current) => ({ ...current, token: event.target.value }))
             }
+            autoComplete="new-password"
             className={inputClass}
             placeholder="Telegram bot token"
           />
@@ -150,6 +189,7 @@ function ProviderFields({
                 webhookSecret: event.target.value,
               }))
             }
+            autoComplete="new-password"
             className={inputClass}
             placeholder="Optional webhook secret"
           />
@@ -168,6 +208,7 @@ function ProviderFields({
             onChange={(event) =>
               setForm((current) => ({ ...current, token: event.target.value }))
             }
+            autoComplete="new-password"
             className={inputClass}
             placeholder="Viber auth token"
           />
@@ -185,6 +226,7 @@ function ProviderFields({
                 connectionKey: event.target.value,
               }))
             }
+            autoComplete="off"
             className={inputClass}
             placeholder="Optional connection key"
           />
@@ -196,46 +238,132 @@ function ProviderFields({
   if (channel === "facebook") {
     return (
       <>
-        <Field label="Page access token">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-900">Authorize Page access</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Sign in with Facebook to load the Pages you manage, then select the Page to connect to this workspace.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void onLaunchFacebookOAuth()}
+              disabled={facebookOAuthBusy}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-300 bg-white px-4 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {facebookOAuthBusy ? "Opening..." : "Sign in with Facebook"}
+            </button>
+          </div>
+
+          {facebookOAuthPages.length ? (
+            <div className="mt-3">
+              <label className="block text-xs font-medium uppercase tracking-widest text-slate-500">
+                Managed Page
+              </label>
+              <select
+                value={selectedFacebookPageId}
+                onChange={(event) => onSelectFacebookPage(event.target.value)}
+                className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              >
+                <option value="">Select a managed Page</option>
+                {facebookOAuthPages.map((page) => (
+                  <option key={page.id} value={page.id}>
+                    {page.name} ({page.id})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Selecting a Page fills the access token automatically. You can also enter a Page access token manually if needed.
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <Field
+          label="Page access token"
+          hint="Save the Page access token on this workspace connection. Messenger app credentials and webhook verification settings remain on the server."
+        >
           <input
             type="password"
             value={form.token}
             onChange={(event) =>
               setForm((current) => ({ ...current, token: event.target.value }))
             }
+            autoComplete="new-password"
             className={inputClass}
             placeholder="Facebook page access token"
           />
         </Field>
 
-        <Field label="Verify token">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          Messenger app credentials are managed on the server, not in this form.
+          Set `META_APP_ID`, `META_APP_SECRET`, and `META_WEBHOOK_VERIFY_TOKEN`, then verify the callback URL in the Meta App Dashboard using `/webhooks/facebook`.
+        </div>
+      </>
+    );
+  }
+
+  if (channel === "tiktok") {
+    return (
+      <>
+        <Field
+          label="Business ID"
+          hint="The TikTok Business account identifier (business_id / open_id) for this workspace connection."
+        >
           <input
-            value={form.verifyToken}
+            value={form.businessId}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                verifyToken: event.target.value,
+                businessId: event.target.value,
               }))
             }
+            autoComplete="off"
             className={inputClass}
-            placeholder="Webhook verify token"
+            placeholder="TikTok business_id"
           />
         </Field>
 
-        <Field label="App secret" hint="Optional but useful for signature verification.">
+        <Field
+          label="Access token"
+          hint="Short-lived TikTok Business account token. The server will refresh it when a refresh token is available."
+        >
           <input
             type="password"
-            value={form.appSecret}
+            value={form.token}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, token: event.target.value }))
+            }
+            autoComplete="new-password"
+            className={inputClass}
+            placeholder="TikTok access token"
+          />
+        </Field>
+
+        <Field
+          label="Refresh token"
+          hint="Recommended. TikTok access tokens expire quickly; refresh tokens keep the inbox connection working."
+        >
+          <input
+            type="password"
+            value={form.refreshToken}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                appSecret: event.target.value,
+                refreshToken: event.target.value,
               }))
             }
+            autoComplete="new-password"
             className={inputClass}
-            placeholder="Optional app secret"
+            placeholder="TikTok refresh token"
           />
         </Field>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          TikTok app credentials are not entered here.
+          Set `TIKTOK_APP_ID` and `TIKTOK_APP_SECRET` on the server, then store the business access token in this workspace connection.
+        </div>
       </>
     );
   }
@@ -253,9 +381,17 @@ function ProviderFields({
 function ConnectionCard({
   connection,
   isSelected,
+  busyAction,
+  onEdit,
+  onReconnect,
+  onDelete,
 }: {
   connection: ChannelConnection;
   isSelected: boolean;
+  busyAction: "reconnect" | "delete" | null;
+  onEdit: (connection: ChannelConnection) => void;
+  onReconnect: (connection: ChannelConnection) => void;
+  onDelete: (connection: ChannelConnection) => void;
 }) {
   return (
     <article
@@ -292,7 +428,7 @@ function ConnectionCard({
           <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
             Verification
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-900">
+          <p className="mt-1 text-sm font-medium text-slate-90 capitalize">
             {connection.verificationState}
           </p>
         </div>
@@ -340,13 +476,59 @@ function ConnectionCard({
           {connection.lastError}
         </div>
       ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(connection)}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => onReconnect(connection)}
+          disabled={busyAction !== null}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busyAction === "reconnect" ? "Reconnecting..." : "Reconnect"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(connection)}
+          disabled={busyAction !== null}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-300 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busyAction === "delete" ? "Deleting..." : "Delete"}
+        </button>
+      </div>
     </article>
   );
 }
 
+function formStateFromConnection(connection: ChannelConnection): ChannelFormState {
+  return {
+    displayName: connection.displayName || "",
+    token: "",
+    refreshToken: "",
+    businessId:
+      (typeof connection.credentials.businessId === "string" &&
+        connection.credentials.businessId) ||
+      connection.externalAccountId ||
+      "",
+    webhookSecret: "",
+    verifyToken: "",
+    appSecret: "",
+    connectionKey:
+      typeof connection.webhookConfig.connectionKey === "string"
+        ? connection.webhookConfig.connectionKey
+        : "",
+  };
+}
+
 export function ChannelsPage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [channel, setChannel] = useState<Channel>("telegram");
@@ -355,18 +537,31 @@ export function ChannelsPage() {
 
   const [isBooting, setIsBooting] = useState(true);
   const [action, setAction] = useState<"connect" | "test" | null>(null);
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
+  const [cardActionById, setCardActionById] = useState<Record<string, "reconnect" | "delete" | null>>({});
   const [error, setError] = useState<string | null>(null);
+  const [publicWebhookBaseUrl, setPublicWebhookBaseUrl] = useState("");
+  const [supportedChannels, setSupportedChannels] = useState<Record<Channel, boolean>>({
+    facebook: true,
+    telegram: true,
+    viber: true,
+    tiktok: true,
+  });
+  const [facebookOAuthBusy, setFacebookOAuthBusy] = useState(false);
+  const [facebookOAuthPages, setFacebookOAuthPages] = useState<FacebookOAuthPage[]>([]);
+  const [selectedFacebookPageId, setSelectedFacebookPageId] = useState("");
 
   const loadConnections = useCallback(async () => {
     if (!workspaceId) return;
 
-    const response = await apiRequest<{ items: ChannelConnection[] }>(
+    const response = await apiRequest<ChannelsResponse>(
       "/api/channels",
       {},
       { workspaceId }
     );
 
     setConnections(response.items);
+    setPublicWebhookBaseUrl(response.publicWebhookBaseUrl || "");
   }, [workspaceId]);
 
   useEffect(() => {
@@ -379,14 +574,22 @@ export function ChannelsPage() {
         setIsBooting(true);
         setError(null);
 
-        const response = await apiRequest<{ items: ChannelConnection[] }>(
-          "/api/channels",
-          {},
-          { workspaceId }
-        );
+        const [response, settingsResponse] = await Promise.all([
+          apiRequest<ChannelsResponse>("/api/channels", {}, { workspaceId }),
+          apiRequest<{ settings: AISettings | null }>("/api/ai-settings", {}, { workspaceId }),
+        ]);
 
         if (!cancelled) {
           setConnections(response.items);
+          setPublicWebhookBaseUrl(response.publicWebhookBaseUrl || "");
+          setSupportedChannels(
+            settingsResponse.settings?.supportedChannels ?? {
+              facebook: true,
+              telegram: true,
+              viber: true,
+              tiktok: true,
+            }
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -430,11 +633,16 @@ export function ChannelsPage() {
     setForm((current) => ({
       ...current,
       token: "",
+      refreshToken: "",
+      businessId: "",
       webhookSecret: "",
       verifyToken: "",
       appSecret: "",
       connectionKey: "",
     }));
+    if (channel !== "facebook") {
+      setSelectedFacebookPageId("");
+    }
   }, [channel]);
 
   const formPayload = useMemo(() => {
@@ -463,11 +671,17 @@ export function ChannelsPage() {
       if (form.token.trim()) {
         credentials.pageAccessToken = form.token.trim();
       }
-      if (form.verifyToken.trim()) {
-        credentials.verifyToken = form.verifyToken.trim();
+    }
+
+    if (channel === "tiktok") {
+      if (form.token.trim()) {
+        credentials.accessToken = form.token.trim();
       }
-      if (form.appSecret.trim()) {
-        credentials.appSecret = form.appSecret.trim();
+      if (form.refreshToken.trim()) {
+        credentials.refreshToken = form.refreshToken.trim();
+      }
+      if (form.businessId.trim()) {
+        credentials.businessId = form.businessId.trim();
       }
     }
 
@@ -487,11 +701,205 @@ export function ChannelsPage() {
       setAction("connect");
       setError(null);
 
-      const response = await apiRequest<{ connection: ChannelConnection }>(
-        `/api/channels/${channel}/connect`,
+      const response = editingConnectionId
+        ? await apiRequest<{ connection: ChannelConnection }>(
+            `/api/channels/${editingConnectionId}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify(formPayload),
+            }
+          )
+        : await apiRequest<{ connection: ChannelConnection }>(
+            `/api/channels/${channel}/connect`,
+            {
+              method: "POST",
+              body: JSON.stringify(formPayload),
+            }
+          );
+
+      setDiagnostics({
+        status: response.connection.status,
+        verificationState: response.connection.verificationState,
+        webhookUrl: response.connection.webhookUrl,
+        lastError: response.connection.lastError,
+      });
+
+      setEditingConnectionId(null);
+      setForm(initialFormState);
+
+      await loadConnections();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connection failed.");
+    } finally {
+      setAction(null);
+    }
+  };
+
+  const handleEdit = (connection: ChannelConnection) => {
+    setChannel(connection.channel);
+    setEditingConnectionId(connection._id);
+    setDiagnostics(null);
+    setError(null);
+    setForm(formStateFromConnection(connection));
+  };
+
+  const handleCancelEdit = () => {
+    setEditingConnectionId(null);
+    setDiagnostics(null);
+    setError(null);
+    setForm(initialFormState);
+  };
+
+  const handleLaunchFacebookOAuth = async () => {
+    if (!workspaceId) {
+      return;
+    }
+
+    try {
+      setFacebookOAuthBusy(true);
+      setError(null);
+
+      const start = await apiRequest<{
+        state: string;
+        authUrl: string;
+        callbackOrigin: string;
+      }>("/api/channels/facebook/oauth/start", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+
+      const popup = window.open(
+        start.authUrl,
+        "facebook_oauth",
+        "width=520,height=720,menubar=no,toolbar=no"
+      );
+
+      if (!popup) {
+        throw new Error("Popup blocked. Allow popups and try again.");
+      }
+
+      const oauthPayload = await new Promise<{ code: string; state: string }>(
+        (resolve, reject) => {
+          const timeoutId = window.setTimeout(() => {
+            cleanup();
+            reject(new Error("Facebook login timed out. Please try again."));
+          }, 120000);
+
+          const closeWatcher = window.setInterval(() => {
+            if (popup.closed) {
+              cleanup();
+              reject(new Error("Facebook login window was closed."));
+            }
+          }, 400);
+
+          const cleanup = () => {
+            window.clearTimeout(timeoutId);
+            window.clearInterval(closeWatcher);
+            window.removeEventListener("message", onMessage);
+            try {
+              if (!popup.closed) {
+                popup.close();
+              }
+            } catch {}
+          };
+
+          const onMessage = (event: MessageEvent) => {
+            if (event.origin !== start.callbackOrigin) {
+              return;
+            }
+
+            const data = event.data as {
+              source?: string;
+              state?: string;
+              code?: string;
+              error?: string;
+              errorDescription?: string;
+            };
+
+            if (data?.source !== "facebook-oauth") {
+              return;
+            }
+
+            if (data.error) {
+              cleanup();
+              reject(new Error(data.errorDescription || "Facebook login failed."));
+              return;
+            }
+
+            const incomingCode = typeof data.code === "string" ? data.code.trim() : "";
+            const incomingState = typeof data.state === "string" ? data.state.trim() : "";
+
+            if (!incomingCode || !incomingState) {
+              cleanup();
+              reject(new Error("Facebook login did not return a valid code."));
+              return;
+            }
+
+            cleanup();
+            resolve({
+              code: incomingCode,
+              state: incomingState,
+            });
+          };
+
+          window.addEventListener("message", onMessage);
+        }
+      );
+
+      const exchange = await apiRequest<{ pages: FacebookOAuthPage[] }>(
+        "/api/channels/facebook/oauth/exchange",
         {
           method: "POST",
-          body: JSON.stringify(formPayload),
+          body: JSON.stringify(oauthPayload),
+        }
+      );
+
+      setFacebookOAuthPages(exchange.pages);
+
+      if (!exchange.pages.length) {
+        setSelectedFacebookPageId("");
+        setError("No pages were returned for this Facebook account.");
+        return;
+      }
+
+      const defaultPage = exchange.pages[0];
+      setSelectedFacebookPageId(defaultPage.id);
+      setForm((current) => ({
+        ...current,
+        token: defaultPage.accessToken,
+        displayName: current.displayName.trim() ? current.displayName : defaultPage.name,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Facebook login failed.");
+    } finally {
+      setFacebookOAuthBusy(false);
+    }
+  };
+
+  const handleSelectFacebookPage = (pageId: string) => {
+    setSelectedFacebookPageId(pageId);
+    const page = facebookOAuthPages.find((item) => item.id === pageId);
+    if (!page) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      token: page.accessToken,
+      displayName: current.displayName.trim() ? current.displayName : page.name,
+    }));
+  };
+
+  const handleReconnect = async (connection: ChannelConnection) => {
+    try {
+      setCardActionById((current) => ({ ...current, [connection._id]: "reconnect" }));
+      setError(null);
+
+      const response = await apiRequest<{ connection: ChannelConnection }>(
+        `/api/channels/${connection._id}/reconnect`,
+        {
+          method: "POST",
+          body: JSON.stringify({}),
         }
       );
 
@@ -504,9 +912,38 @@ export function ChannelsPage() {
 
       await loadConnections();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed.");
+      setError(err instanceof Error ? err.message : "Reconnect failed.");
     } finally {
-      setAction(null);
+      setCardActionById((current) => ({ ...current, [connection._id]: null }));
+    }
+  };
+
+  const handleDelete = async (connection: ChannelConnection) => {
+    const confirmed = window.confirm(
+      `Delete the ${channelMeta[connection.channel].label} connection \"${connection.displayName || connection.externalAccountId}\"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setCardActionById((current) => ({ ...current, [connection._id]: "delete" }));
+      setError(null);
+
+      await apiRequest<{ deleted: boolean }>(`/api/channels/${connection._id}`, {
+        method: "DELETE",
+      });
+
+      if (editingConnectionId === connection._id) {
+        handleCancelEdit();
+      }
+
+      await loadConnections();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setCardActionById((current) => ({ ...current, [connection._id]: null }));
     }
   };
 
@@ -535,12 +972,15 @@ export function ChannelsPage() {
 
   const selectedConnection =
     connections.find((item) => item.channel === channel) ?? null;
-
-  const webhookEndpoints = [
-    `${apiBase}/webhooks/facebook`,
-    `${apiBase}/webhooks/telegram`,
-    `${apiBase}/webhooks/viber?connectionKey=your-key`,
-  ];
+  const selectedConnectionId =
+    editingConnectionId ??
+    (connections.find((item) => item.channel === channel)?._id ?? null);
+  const selectedChannelSupported = supportedChannels[channel];
+  const selectedWebhookUrl = buildWebhookPreviewUrl({
+    baseUrl: publicWebhookBaseUrl,
+    channel,
+    connectionKey: form.connectionKey,
+  });
 
   if (!workspaceId) {
     return (
@@ -617,44 +1057,18 @@ export function ChannelsPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(360px,0.95fr)_minmax(0,1.05fr)]">
         <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Connector
-            </p>
-            <h3 className="mt-2 text-lg font-semibold text-slate-900">
-              Configure provider access
+            <h3 className="text-lg font-semibold text-slate-900">
+              {editingConnectionId ? "Edit connection" : "Connect a channel"}
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Save credentials for a specific provider and optionally test them before use.
-            </p>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div>
-              <p className="text-sm font-medium text-slate-900">Webhook endpoints</p>
-              <p className="mt-1 text-sm text-slate-500">
-                Use the matching endpoint for each provider when configuring callbacks.
-              </p>
+          {!selectedChannelSupported ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              {channelMeta[channel].label} is currently disabled in Admin Settings. Enable it there before testing or saving a connection.
             </div>
+          ) : null}
 
-            {webhookEndpoints.map((endpoint) => (
-              <div
-                key={endpoint}
-                className="rounded-xl bg-slate-950 px-3 py-2 text-xs text-slate-100"
-              >
-                {endpoint}
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-medium text-slate-900">Runtime rule</p>
-            <p className="mt-1 text-sm text-slate-500">
-              No provider credentials means no active connection. The backend should not claim connected,
-              verified, or sent unless provider calls or verified webhook logic actually succeeded.
-            </p>
-          </div>
-
-          <form className="space-y-5" onSubmit={handleConnect}>
+          <form className="space-y-5" onSubmit={handleConnect} autoComplete="off">
             <Field label="Channel">
               <select
                 value={channel}
@@ -682,11 +1096,20 @@ export function ChannelsPage() {
               <p className="mt-2 text-xs text-slate-500">
                 {channelMeta[channel].credentialHint}
               </p>
-              {channelMeta[channel].webhookPath ? (
-                <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-700 ring-1 ring-slate-200">
-                  {`${apiBase}${channelMeta[channel].webhookPath}`}
+              {selectedWebhookUrl ? (
+                <div className="mt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Callback URL
+                  </p>
+                  <div className="mt-1 rounded-xl bg-white px-3 py-2 text-xs text-slate-700 ring-1 ring-slate-200">
+                    {selectedWebhookUrl}
+                  </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Set `PUBLIC_WEBHOOK_BASE_URL` on the server to generate the public callback URL for this channel.
+                </div>
+              )}
             </div>
 
             <Field label="Display name" hint="Optional internal label for this connection.">
@@ -699,29 +1122,53 @@ export function ChannelsPage() {
                   }))
                 }
                 placeholder="Optional label"
+                autoComplete="off"
                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
               />
             </Field>
 
-            <ProviderFields channel={channel} form={form} setForm={setForm} />
+            <ProviderFields
+              channel={channel}
+              form={form}
+              setForm={setForm}
+              facebookOAuthBusy={facebookOAuthBusy}
+              facebookOAuthPages={facebookOAuthPages}
+              selectedFacebookPageId={selectedFacebookPageId}
+              onLaunchFacebookOAuth={handleLaunchFacebookOAuth}
+              onSelectFacebookPage={handleSelectFacebookPage}
+            />
 
             <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
               <button
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                disabled={action !== null}
+                disabled={action !== null || !selectedChannelSupported}
                 type="submit"
               >
-                {action === "connect" ? "Saving..." : "Save connection"}
+                {action === "connect"
+                  ? "Saving..."
+                  : editingConnectionId
+                  ? "Save changes"
+                  : "Save connection"}
               </button>
 
               <button
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={action !== null}
+                disabled={action !== null || !selectedChannelSupported}
                 onClick={() => void handleTest()}
                 type="button"
               >
                 {action === "test" ? "Testing..." : "Test credentials"}
               </button>
+
+              {editingConnectionId ? (
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  onClick={handleCancelEdit}
+                  type="button"
+                >
+                  Cancel edit
+                </button>
+              ) : null}
             </div>
           </form>
 
@@ -770,7 +1217,7 @@ export function ChannelsPage() {
                   <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
                     Verification
                   </p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">
+                  <p className="mt-1 text-sm font-medium text-slate-900 capitalize">
                     {selectedConnection.verificationState}
                   </p>
                 </div>
@@ -806,7 +1253,11 @@ export function ChannelsPage() {
                 <ConnectionCard
                   key={connection._id}
                   connection={connection}
-                  isSelected={connection.channel === channel}
+                  isSelected={connection._id === selectedConnectionId}
+                  busyAction={cardActionById[connection._id] ?? null}
+                  onEdit={handleEdit}
+                  onReconnect={(item) => void handleReconnect(item)}
+                  onDelete={(item) => void handleDelete(item)}
                 />
               ))
             ) : (

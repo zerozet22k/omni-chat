@@ -5,6 +5,7 @@ export const MESSAGE_KINDS = [
   "video",
   "audio",
   "file",
+  "sticker",
   "location",
   "contact",
   "interactive",
@@ -17,6 +18,7 @@ export const OUTBOUND_MESSAGE_KINDS = [
   "video",
   "audio",
   "file",
+  "sticker",
   "location",
   "contact",
   "interactive",
@@ -89,6 +91,12 @@ export interface CanonicalMedia {
   durationMs?: number;
   providerFileId?: string;
   thumbnailUrl?: string;
+  isTemporary?: boolean;
+  expiresAt?: Date | null;
+  expirySource?: "provider_ttl" | "signed_url" | "unknown" | null;
+  lastValidatedAt?: Date | null;
+  storedAssetId?: string | null;
+  storedAssetUrl?: string | null;
 }
 
 export interface CanonicalLocation {
@@ -148,6 +156,7 @@ export interface ChannelCapabilities {
     video: boolean;
     audio: boolean;
     file: boolean;
+    sticker?: boolean;
     location: boolean;
     contact: boolean;
     interactive: boolean;
@@ -158,6 +167,7 @@ export interface ChannelCapabilities {
     video: boolean;
     audio: boolean;
     file: boolean;
+    sticker?: boolean;
     location: boolean;
     contact: boolean;
     interactive: boolean;
@@ -170,6 +180,9 @@ export interface OutboundCommand {
   kind: OutboundMessageKind;
   text?: CanonicalTextPayload;
   media?: CanonicalMedia[];
+  location?: CanonicalLocation;
+  contact?: CanonicalContactPayload;
+  interactive?: CanonicalInteractivePayload;
   meta?: Record<string, unknown>;
   occurredAt?: Date;
 }

@@ -1,0 +1,509 @@
+
+===== 2026-03-18T16:02:34.655Z =====
+{
+  "message_token": 6215086022157097000,
+  "event": "webhook",
+  "timestamp": 1773849754525
+}
+
+===== 2026-03-18T16:03:12.646Z =====
+{
+  "event": "message",
+  "timestamp": 1773849791304,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086176977822000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "type": "picture",
+    "media": "https://dl-media.viber.com/6/media/2/short/any/sig/image/0x0/fc9e/68898a7f99617d9bd0cea108adba2c2f3882356b12c7b433028b61452c76fc9e.jpg?Expires=1773853392&Signature=Vtp3sO0otEqrLJZ4-VeFLtYfMYHm3-oQv3mU~YRyomzPnJw5t-pU7jUq7J3cRneVQuWE8CEcDb3qQ22ZshYkQ16u9Z3GIWOoxhIJnXdpNnu78lflnLvR1IGDZj5HbBAJGTkBLhP6fAZFRKdrQ3T2A1uFAZQ3u3qnzCCeuMWtrsOnJear-QnnLYBFJEC8mYy7bM5w7ZJcMe80j868ILOYkfLcyOBDIC1vfYBkrVGvmMgkkopFIc5cJCv3D4HWOMoFXvq4jjsgF5b7kH~e1DKAttZuvffRITUGYBFTvRuMeQzhDUNhxf8zuCbN~Vq41QA-0sTSUkW7Z6SS-Jl0ponWHA__&Key-Pair-Id=APKAJ62UNSBCMEIPV4HA",
+    "thumbnail": "https://dl-media.viber.com/6/media/2/short/any/sig/image/400/fc9e/68898a7f99617d9bd0cea108adba2c2f3882356b12c7b433028b61452c76fc9e.jpg?Expires=1773853392&Signature=d-gXVutWh6Tx9q9e1ZhhwGUYExyz3G9tu~lo-e1XUaE2QERnJW6f8xmX-~zeRCD4MUgDxNHrzJ~CsmEINr0rU4nhuSMaeWY9h27KrWKtvjAYXlM0DSogtZS21ufy7i2yPePWP5YbJMlsIR1lGUr3Otwd9Uu3epkz8qVZYGyEIPAFQC9-pDnnuxuVSDk4g8eictwv~AfUFQ2T1UzpfJYuhIUGRGz1cxylNwNZEJ3i0goHYMtpox54lvw-G0aqf1oHh3RFYNbwpW966l25Dy-XYUyfrRULGROpe8pSV1uCtPblG~BZKlyz7aEeFXQwCKkJD1CDBNQTErSea3Q7-SaIgQ__&Key-Pair-Id=APKAJ62UNSBCMEIPV4HA",
+    "file_name": "IMG-f7767133f8c2d906ccb1dfb784cd6645-V.jpg",
+    "size": 169572
+  }
+}
+
+===== 2026-03-18T16:03:14.178Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849794184,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086186875804000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:14.251Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849794240,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086186875804000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:46.644Z =====
+{
+  "event": "message",
+  "timestamp": 1773849826344,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086323900097000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "😁",
+    "type": "text"
+  }
+}
+
+===== 2026-03-18T16:03:48.445Z =====
+{
+  "event": "message",
+  "timestamp": 1773849828426,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086332645221000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "type": "sticker",
+    "media": "http://content.cdn.viber.com/stickers/100/154200/00154200.png",
+    "sticker_id": 154200
+  }
+}
+
+===== 2026-03-18T16:03:50.100Z =====
+{
+  "event": "seen",
+  "timestamp": 1773849830086,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086186875804000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:51.211Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849831294,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086342604503000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:51.283Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849831359,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086342604503000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:51.668Z =====
+{
+  "event": "message",
+  "timestamp": 1773849831634,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086346087965000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "https://media.tenor.com/aWGN4Gs9CXkAAAAC/tasse-caf%C3%A9.gif",
+    "type": "text"
+  }
+}
+
+===== 2026-03-18T16:03:51.847Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849831720,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086344508717000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:52.626Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849831743,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086344508717000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:03:53.687Z =====
+{
+  "event": "seen",
+  "timestamp": 1773849833807,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086344508717000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:04:05.643Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849845748,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086402803723000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:04:05.655Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773849845738,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086402803723000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:04:06.866Z =====
+{
+  "event": "seen",
+  "timestamp": 1773849846984,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215086402803723000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:14:35.968Z =====
+{
+  "event": "message",
+  "timestamp": 1773850475225,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089045525242000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "type": "location",
+    "location": {
+      "lat": 13.754195,
+      "lon": 100.626299
+    }
+  }
+}
+
+===== 2026-03-18T16:14:37.597Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850477556,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089052927613000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:15:04.136Z =====
+{
+  "event": "message",
+  "timestamp": 1773850504079,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089166551885000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "5BB Call Center +959458111105",
+    "type": "contact",
+    "contact": {
+      "name": "5BB Call Center",
+      "phone_number": "+959458111105",
+      "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=0-03-06-366618293909a4a5373ea74f6e3fe590ff0193d1410bc0060527cf6120d17295&fltp=jpg&imsz=0000"
+    }
+  }
+}
+
+===== 2026-03-18T16:15:05.757Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850505692,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089171051796000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:15:05.785Z =====
+{
+  "event": "seen",
+  "timestamp": 1773850505784,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089052927613000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:15:07.061Z =====
+{
+  "event": "seen",
+  "timestamp": 1773850507171,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089171051796000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:02.708Z =====
+{
+  "event": "message",
+  "timestamp": 1773850562486,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089411507627000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "https://media.tenor.com/3gPvMpiZ9A0AAAAC/h-o-l-y-s-h-i-t-boom.gif",
+    "type": "text"
+  }
+}
+
+===== 2026-03-18T16:16:07.130Z =====
+{
+  "event": "message",
+  "timestamp": 1773850566970,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089430331663000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "type": "sticker",
+    "media": "http://content.cdn.viber.com/stickers/100/154200/00154202.png",
+    "sticker_id": 154202
+  }
+}
+
+===== 2026-03-18T16:16:10.828Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850570823,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089444533000000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:10.847Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850570904,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089444533000000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:11.244Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850571207,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089446193945000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:11.489Z =====
+{
+  "event": "seen",
+  "timestamp": 1773850571563,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089446193945000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:11.650Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850571233,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089446193945000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:18.193Z =====
+{
+  "event": "message",
+  "timestamp": 1773850578144,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089477198815000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "https://media.tenor.com/pKxzzxL7jqcAAAAC/i-see-really.gif",
+    "type": "text"
+  }
+}
+
+===== 2026-03-18T16:16:31.698Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850591803,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089532109133000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:31.740Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850591781,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089532109133000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:16:32.931Z =====
+{
+  "event": "seen",
+  "timestamp": 1773850593033,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215089532109133000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:18:42.071Z =====
+{
+  "event": "message",
+  "timestamp": 1773850721818,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215090079802861000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "text": "https://media.tenor.com/J2W5MkA5664AAAAC/hug.gif",
+    "type": "text"
+  }
+}
+
+===== 2026-03-18T16:18:54.034Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850734033,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215090129094682000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:18:54.068Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773850734157,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215090129094682000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-18T16:18:55.281Z =====
+{
+  "event": "seen",
+  "timestamp": 1773850735413,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215090129094682000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-19T00:15:30.568Z =====
+{
+  "event": "message",
+  "timestamp": 1773879330253,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215210072301279000,
+  "sender": {
+    "id": "o1tnl9daXTSBoARniLz8/g==",
+    "name": "Thi Ha Zaw",
+    "avatar": "https://media-direct.cdn.viber.com/download_photo?dlid=hy-tgkTj573WoJpR_O1Zl3WHJXlbqBwF2TwvWP4aoHsSvFw73n2jKCKWfpccIHaNbHDD5FEbG6LpAJJOQRTVz1GNKYAqMO4_uqJ5quKoC10IrsyUObA1_pz_Su0cx2j5HAHV4w&fltp=jpg&imsz=0000",
+    "language": "en",
+    "country": "MM",
+    "api_version": 10
+  },
+  "message": {
+    "type": "sticker",
+    "media": "http://content.cdn.viber.com/stickers/100/154200/00154202.png",
+    "sticker_id": 154202
+  }
+}
+
+===== 2026-03-19T00:15:32.037Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773879332087,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215210077911848000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-19T00:15:32.149Z =====
+{
+  "event": "delivered",
+  "timestamp": 1773879332223,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215210077911848000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-19T00:15:33.478Z =====
+{
+  "event": "seen",
+  "timestamp": 1773879333607,
+  "chat_hostname": "BIZ_CHAT_OUTBOUND",
+  "message_token": 6215210077911848000,
+  "user_id": "o1tnl9daXTSBoARniLz8/g=="
+}
+
+===== 2026-03-20T15:11:00.431Z =====
+{
+  "message_token": 6215797835114660000,
+  "event": "webhook",
+  "timestamp": 1774019463958
+}

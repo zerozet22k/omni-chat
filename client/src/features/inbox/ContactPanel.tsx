@@ -1,6 +1,23 @@
 import { useState } from "react";
 import { Contact, Conversation } from "../../types/models";
+import { apiRequest } from "../../services/api";
 import { ChannelBadge } from "./ChannelBadge";
+
+type UpdateConversationResponse =
+  | Conversation
+  | { conversation: Conversation };
+
+function isConversation(value: unknown): value is Conversation {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "_id" in value &&
+    "workspaceId" in value &&
+    "channel" in value &&
+    "status" in value &&
+    "aiState" in value
+  );
+}
 
 type InfoBlockProps = {
   label: string;
@@ -89,67 +106,46 @@ export function ContactPanel(props: {
   const identities = contact?.channelIdentities ?? [];
   const tags = conversation.tags ?? [];
   const aiState = conversation.aiState ?? "idle";
-type UpdateConversationResponse =
-  | Conversation
-  | { conversation: Conversation };
 
-function isConversation(value: unknown): value is Conversation {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "_id" in value &&
-    "workspaceId" in value &&
-    "channel" in value &&
-    "status" in value &&
-    "aiState" in value
-  );
-}
+  const patchConversation = async (patch: Record<string, unknown>) => {
+    setIsSubmitting(true);
+    setActionError(null);
 
-const patchConversation = async (patch: Record<string, unknown>) => {
-  setIsSubmitting(true);
-  setActionError(null);
+    try {
+      const data = await apiRequest<UpdateConversationResponse>(
+        `/api/conversations/${conversation._id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        }
+      );
 
-  try {
-    const response = await fetch(`/api/conversations/${conversation._id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(patch),
-    });
+      let updatedConversation: Conversation | null = null;
 
-    if (!response.ok) {
-      throw new Error("Failed to update conversation");
+      if (isConversation(data)) {
+        updatedConversation = data;
+      } else if (
+        typeof data === "object" &&
+        data !== null &&
+        "conversation" in data &&
+        isConversation((data as { conversation?: unknown }).conversation)
+      ) {
+        updatedConversation = (data as { conversation: Conversation }).conversation;
+      }
+
+      if (!updatedConversation) {
+        throw new Error("Unexpected conversation response");
+      }
+
+      onConversationUpdated?.(updatedConversation);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Failed to update conversation"
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const data: unknown = (await response.json()) as UpdateConversationResponse;
-
-    let updatedConversation: Conversation | null = null;
-
-    if (isConversation(data)) {
-      updatedConversation = data;
-    } else if (
-      typeof data === "object" &&
-      data !== null &&
-      "conversation" in data &&
-      isConversation((data as { conversation?: unknown }).conversation)
-    ) {
-      updatedConversation = (data as { conversation: Conversation }).conversation;
-    }
-
-    if (!updatedConversation) {
-      throw new Error("Unexpected conversation response");
-    }
-
-    onConversationUpdated?.(updatedConversation);
-  } catch (error) {
-    setActionError(
-      error instanceof Error ? error.message : "Failed to update conversation"
-    );
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const handleTakeOver = async () => {
     await patchConversation({

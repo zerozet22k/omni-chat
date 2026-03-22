@@ -1,17 +1,20 @@
 import axios from "axios";
 import { BaseChannelAdapter } from "./base.adapter";
 import { CanonicalMessage, ChannelCapabilities } from "./types";
+import { env } from "../config/env";
 
 type FacebookWebhook = {
+  object?: string;
   entry?: Array<{
     id?: string;
     messaging?: Array<{
-      sender?: { id: string };
-      recipient?: { id: string };
+      sender?: { id?: string };
+      recipient?: { id?: string };
       timestamp?: number;
       message?: {
         mid?: string;
         text?: string;
+        is_echo?: boolean;
         quick_reply?: { payload?: string };
         attachments?: Array<{
           type?: string;
@@ -28,8 +31,27 @@ type FacebookWebhook = {
         title?: string;
         payload?: string;
       };
+      delivery?: Record<string, unknown>;
+      read?: Record<string, unknown>;
     }>;
   }>;
+};
+
+const trimString = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+const buildPageScopedSenderId = (pageId: string, senderId: string) =>
+  `${pageId}:${senderId}`;
+
+const buildSyntheticMessageId = (
+  prefix: string,
+  pageId: string,
+  senderId: string,
+  timestamp?: number,
+  payload?: string
+) => {
+  const normalizedPayload = trimString(payload) || "event";
+  return `${prefix}:${pageId}:${senderId}:${timestamp ?? Date.now()}:${normalizedPayload}`;
 };
 
 export class FacebookAdapter extends BaseChannelAdapter {
@@ -42,9 +64,9 @@ export class FacebookAdapter extends BaseChannelAdapter {
       credentials: Record<string, unknown>;
     };
   }) {
-    const appSecret = String(input.connection?.credentials.appSecret ?? "");
-    if (!appSecret) {
-      return true;
+    const appSecret = trimString(env.META_APP_SECRET);
+    if (!appSecret || !input.rawBody) {
+      return false;
     }
 
     return this.matchesSignature({
@@ -70,6 +92,8 @@ export class FacebookAdapter extends BaseChannelAdapter {
       },
       outbound: {
         text: true,
+        // TODO: Add Messenger Send API attachment mapping when we support clean
+        // upload/URL handling for Facebook media replies in the shared sender.
         image: false,
         video: false,
         audio: false,
@@ -83,24 +107,62 @@ export class FacebookAdapter extends BaseChannelAdapter {
 
   async parseInbound(reqBody: unknown): Promise<CanonicalMessage[]> {
     const body = reqBody as FacebookWebhook;
+    if (body.object !== "page") {
+      return [];
+    }
+
     const messages: CanonicalMessage[] = [];
 
     for (const entry of body.entry ?? []) {
       for (const event of entry.messaging ?? []) {
-        if (!event.sender?.id || !event.recipient?.id) {
+        const senderId = trimString(event.sender?.id);
+        const recipientPageId = trimString(event.recipient?.id);
+        const pageId = trimString(entry.id) || recipientPageId;
+
+        if (!senderId || !recipientPageId || !pageId) {
           continue;
         }
 
+        if (event.delivery || event.read || event.message?.is_echo) {
+          continue;
+        }
+
+        const externalMessageId =
+          trimString(event.message?.mid) ||
+          (event.postback
+            ? buildSyntheticMessageId(
+                "fb-postback",
+                pageId,
+                senderId,
+                event.timestamp,
+                event.postback.payload ?? event.postback.title
+              )
+            : event.message?.quick_reply?.payload
+              ? buildSyntheticMessageId(
+                  "fb-quick-reply",
+                  pageId,
+                  senderId,
+                  event.timestamp,
+                  event.message.quick_reply.payload
+                )
+              : undefined);
+
         const base = {
           channel: this.channel,
-          channelAccountId: entry.id ?? event.recipient.id,
+          channelAccountId: pageId,
           direction: "inbound" as const,
           senderType: "customer" as const,
-          externalMessageId: event.message?.mid,
-          externalChatId: event.sender.id,
-          externalSenderId: event.sender.id,
+          externalMessageId,
+          externalChatId: senderId,
+          externalSenderId: buildPageScopedSenderId(pageId, senderId),
           raw: event,
           occurredAt: event.timestamp ? new Date(event.timestamp) : new Date(),
+          meta: {
+            pageId,
+            recipientPageId,
+            senderPsid: senderId,
+            providerThreadKey: `${pageId}:${senderId}`,
+          },
         };
 
         if (event.message?.quick_reply?.payload) {
@@ -151,81 +213,68 @@ export class FacebookAdapter extends BaseChannelAdapter {
           continue;
         }
 
-        const attachment = event.message?.attachments?.[0];
-        if (!attachment) {
-          continue;
-        }
-
-        if (attachment.type === "image") {
-          messages.push({
-            ...base,
-            kind: "image",
-            media: [
-              {
-                url: attachment.payload?.url,
-              },
-            ],
-          });
-          continue;
-        }
-
-        if (attachment.type === "video") {
-          messages.push({
-            ...base,
-            kind: "video",
-            media: [
-              {
-                url: attachment.payload?.url,
-              },
-            ],
-          });
-          continue;
-        }
-
-        if (attachment.type === "audio") {
-          messages.push({
-            ...base,
-            kind: "audio",
-            media: [
-              {
-                url: attachment.payload?.url,
-              },
-            ],
-          });
-          continue;
-        }
-
-        if (attachment.type === "file") {
-          messages.push({
-            ...base,
-            kind: "file",
-            media: [
-              {
-                url: attachment.payload?.url,
-              },
-            ],
-          });
+        const attachments = event.message?.attachments ?? [];
+        if (!attachments.length) {
           continue;
         }
 
         if (
-          attachment.type === "location" &&
-          attachment.payload?.coordinates?.lat !== undefined &&
-          attachment.payload?.coordinates?.long !== undefined
+          attachments.length === 1 &&
+          trimString(attachments[0]?.type).toLowerCase() === "location" &&
+          attachments[0].payload?.coordinates?.lat !== undefined &&
+          attachments[0].payload?.coordinates?.long !== undefined
         ) {
           messages.push({
             ...base,
             kind: "location",
             location: {
-              lat: attachment.payload.coordinates.lat,
-              lng: attachment.payload.coordinates.long,
+              lat: attachments[0].payload.coordinates.lat,
+              lng: attachments[0].payload.coordinates.long,
             },
           });
           continue;
         }
 
+        const attachmentType = trimString(attachments[0]?.type).toLowerCase();
+        const allSameType = attachments.every(
+          (attachment) => trimString(attachment.type).toLowerCase() === attachmentType
+        );
+
+        if (
+          allSameType &&
+          (attachmentType === "image" ||
+            attachmentType === "video" ||
+            attachmentType === "audio" ||
+            attachmentType === "file")
+        ) {
+          const kind =
+            attachmentType === "image"
+              ? "image"
+              : attachmentType === "video"
+                ? "video"
+                : attachmentType === "audio"
+                  ? "audio"
+                  : "file";
+
+          messages.push({
+            ...base,
+            kind,
+            media: attachments
+              .map((attachment) => ({
+                url: trimString(attachment.payload?.url) || undefined,
+              }))
+              .filter((item) => item.url),
+          });
+          continue;
+        }
+
         messages.push(
-          this.buildUnsupportedMessage(base, "Messenger attachment type is not mapped in MVP")
+          this.buildUnsupportedMessage(
+            base,
+            allSameType
+              ? `Messenger attachment type ${attachmentType || "unknown"} is not mapped`
+              : "Messenger attachment batch mixes unsupported media types"
+          )
         );
       }
     }
@@ -250,7 +299,7 @@ export class FacebookAdapter extends BaseChannelAdapter {
       },
     };
 
-    const pageAccessToken = String(input.connection.credentials.pageAccessToken ?? "");
+    const pageAccessToken = trimString(input.connection.credentials.pageAccessToken);
     if (!pageAccessToken) {
       return {
         status: "failed" as const,
@@ -271,7 +320,7 @@ export class FacebookAdapter extends BaseChannelAdapter {
       );
 
       return {
-        externalMessageId: String(response.data?.message_id ?? ""),
+        externalMessageId: trimString(response.data?.message_id) || undefined,
         status: "sent" as const,
         raw: response.data,
         request,

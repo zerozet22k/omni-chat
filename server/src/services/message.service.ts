@@ -4,6 +4,8 @@ import {
   MessageModel,
 } from "../models";
 import { CanonicalMessage, SendOutboundResult } from "../channels/types";
+import { telegramStickerPreviewService } from "./telegram-sticker-preview.service";
+import { tiktokBusinessMessagingService } from "./tiktok-business-messaging.service";
 
 class MessageService {
   async createInboundMessage(params: {
@@ -85,28 +87,31 @@ class MessageService {
     messageId: string,
     sendResult: SendOutboundResult
   ) {
-    return MessageModel.findByIdAndUpdate(
-      messageId,
-      {
-        $set: {
-          externalMessageId: sendResult.externalMessageId ?? null,
-          status:
-            sendResult.status === "sent"
-              ? "sent"
-              : sendResult.status === "queued"
-                ? "queued"
-                : "failed",
-          raw: {
-            request: sendResult.request,
-            response: sendResult.raw,
-          },
-          meta: {
-            deliveryError: sendResult.error ?? null,
-          },
-        },
-      },
-      { new: true }
-    );
+    const message = await MessageModel.findById(messageId);
+    if (!message) {
+      return null;
+    }
+
+    const newMeta = {
+      ...(message.meta ?? {}),
+      deliveryError: sendResult.error ?? null,
+    };
+
+    message.externalMessageId = sendResult.externalMessageId ?? null;
+    message.status =
+      sendResult.status === "sent"
+        ? "sent"
+        : sendResult.status === "queued"
+        ? "queued"
+        : "failed";
+    message.raw = {
+      request: sendResult.request,
+      response: sendResult.raw,
+    };
+    message.meta = newMeta;
+
+    await message.save();
+    return message;
   }
 
   async createDeliveryRecord(params: {
@@ -153,10 +158,144 @@ class MessageService {
       }
     }
 
-    return messages.map((message) => ({
+    const serializedMessages = messages.map((message) => ({
       ...message.toObject(),
       delivery: latestDeliveryByMessageId.get(String(message._id))?.toObject() ?? null,
     }));
+
+    return Promise.all(
+      serializedMessages.map(async (message) =>
+        this.enrichTikTokMediaPresentation(
+          this.enrichStickerPresentation(message)
+        )
+      )
+    );
+  }
+
+  async listRecentCanonicalByConversation(
+    conversationId: string,
+    limit = 12
+  ): Promise<Array<{
+    senderType: string;
+    kind: string;
+    text?: { body?: string };
+    media?: Array<{ url?: string; filename?: string }>;
+    createdAt: Date;
+  }>> {
+    const messages = await MessageModel.find({ conversationId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select("senderType kind text media createdAt")
+      .lean();
+
+    return messages
+      .reverse()
+      .map((message) => ({
+        senderType: message.senderType,
+        kind: message.kind,
+        text: message.text as { body?: string } | undefined,
+        media: (message.media as Array<{ url?: string; filename?: string }> | undefined) ?? [],
+        createdAt: message.createdAt,
+      }));
+  }
+
+  private enrichStickerPresentation(message: Record<string, unknown>) {
+    if (message.channel !== "telegram" || message.kind !== "sticker") {
+      return message;
+    }
+
+    const meta =
+      typeof message.meta === "object" && message.meta !== null
+        ? (message.meta as Record<string, unknown>)
+        : {};
+    const media = Array.isArray(message.media)
+      ? [...(message.media as Array<Record<string, unknown>>)]
+      : [];
+    const firstMedia =
+      media.length > 0 && typeof media[0] === "object" && media[0] !== null
+        ? { ...media[0] }
+        : {};
+
+    const previewFileId =
+      (typeof meta.telegramStickerPreviewFileId === "string" &&
+        meta.telegramStickerPreviewFileId) ||
+      (typeof firstMedia.providerFileId === "string" && firstMedia.providerFileId) ||
+      (typeof meta.originalStickerFileId === "string" && meta.originalStickerFileId) ||
+      (typeof meta.platformStickerId === "string" && meta.platformStickerId) ||
+      null;
+
+    if (!previewFileId) {
+      return message;
+    }
+
+    const mimeType =
+      (typeof firstMedia.mimeType === "string" && firstMedia.mimeType) ||
+      (typeof meta.stickerPreviewMimeType === "string" && meta.stickerPreviewMimeType) ||
+      undefined;
+
+    const enrichedMediaItem = {
+      ...firstMedia,
+      providerFileId:
+        typeof firstMedia.providerFileId === "string" && firstMedia.providerFileId
+          ? firstMedia.providerFileId
+          : previewFileId,
+      url: telegramStickerPreviewService.createSignedPreviewUrl(
+        String(message.conversationId),
+        previewFileId
+      ),
+      mimeType,
+    };
+
+    return {
+      ...message,
+      media: media.length > 0 ? [enrichedMediaItem, ...media.slice(1)] : [enrichedMediaItem],
+    };
+  }
+
+  private async enrichTikTokMediaPresentation(message: Record<string, unknown>) {
+    if (message.channel !== "tiktok" || !Array.isArray(message.media) || !message._id) {
+      return message;
+    }
+
+    const meta =
+      typeof message.meta === "object" && message.meta !== null
+        ? (message.meta as Record<string, unknown>)
+        : {};
+    const mediaType =
+      String(meta.providerMessageType ?? "").toUpperCase() === "VIDEO" ||
+      message.kind === "video"
+        ? "VIDEO"
+        : "IMAGE";
+
+    const media = (message.media as Array<Record<string, unknown>>).map((item) => {
+      if (typeof item !== "object" || item === null) {
+        return item;
+      }
+
+      const hasUrl =
+        typeof item.url === "string" && item.url.trim().length > 0;
+      const providerFileId =
+        typeof item.providerFileId === "string" ? item.providerFileId.trim() : "";
+
+      if (hasUrl || !providerFileId) {
+        return item;
+      }
+
+      return {
+        ...item,
+        url: tiktokBusinessMessagingService.createSignedMediaUrl({
+          conversationId: String(message.conversationId),
+          messageId: String(message._id),
+          mediaId: providerFileId,
+          mediaType,
+        }),
+      };
+    });
+
+    return {
+      ...message,
+      media,
+    };
   }
 }
 

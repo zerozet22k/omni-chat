@@ -82,8 +82,8 @@ function KnowledgeCard({
 }
 
 export function KnowledgePage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);

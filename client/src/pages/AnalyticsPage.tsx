@@ -70,8 +70,8 @@ function ChannelRow({ label, total, percentage }: ChannelRowProps) {
 }
 
 export function AnalyticsPage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [items, setItems] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);

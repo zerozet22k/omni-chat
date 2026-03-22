@@ -1,3 +1,5 @@
+import { OutboundContentBlock } from "./outbound-content";
+
 export type Channel = "facebook" | "telegram" | "viber" | "tiktok";
 export type ConversationStatus = "open" | "pending" | "resolved";
 export type MessageKind =
@@ -6,6 +8,7 @@ export type MessageKind =
   | "video"
   | "audio"
   | "file"
+  | "sticker"
   | "location"
   | "contact"
   | "interactive"
@@ -13,17 +16,22 @@ export type MessageKind =
   | "system";
 
 export interface SessionData {
+  token: string;
   user: {
     _id: string;
     email: string;
     name: string;
+    avatarUrl?: string;
   };
-  workspace: {
+  workspaces: Array<{
     _id: string;
     name: string;
     slug: string;
     timeZone: string;
-  };
+    role: "owner" | "admin" | "staff";
+    status?: "active" | "invited" | "disabled";
+  }>;
+  activeWorkspaceId: string;
 }
 
 export interface Conversation {
@@ -52,6 +60,18 @@ export interface Conversation {
   contact?: {
     _id: string;
     primaryName: string;
+    channelIdentities?: Array<{
+      channel: Channel;
+      externalUserId: string;
+      displayName?: string;
+      username?: string;
+      avatar?: string;
+    }>;
+  } | null;
+  assignee?: {
+    _id: string;
+    name: string;
+    avatarUrl?: string;
   } | null;
 }
 
@@ -70,10 +90,30 @@ export interface Message {
     url?: string;
     mimeType?: string;
     filename?: string;
+    size?: number;
+    width?: number;
+    height?: number;
+    durationMs?: number;
+    thumbnailUrl?: string;
+    isTemporary?: boolean;
+    expiresAt?: string | null;
+    expirySource?: "provider_ttl" | "signed_url" | "unknown" | null;
+    lastValidatedAt?: string | null;
+    storedAssetId?: string | null;
+    storedAssetUrl?: string | null;
   }>;
+  location?: {
+    lat?: number;
+    lng?: number;
+    label?: string;
+  };
+  contact?: {
+    name?: string;
+    phone?: string;
+  };
   unsupportedReason?: string | null;
   status: "received" | "queued" | "sent" | "delivered" | "read" | "failed";
-  meta?: {
+  meta?: Record<string, unknown> & {
     deliveryError?: string | null;
   };
   delivery?: {
@@ -136,6 +176,7 @@ export interface CannedReply {
   workspaceId: string;
   title: string;
   body: string;
+  blocks: OutboundContentBlock[];
   triggers: string[];
   category: string;
   isActive?: boolean;
@@ -148,6 +189,9 @@ export interface AISettings {
   afterHoursEnabled: boolean;
   confidenceThreshold: number;
   fallbackMessage: string;
+  geminiModel: string;
+  hasGeminiApiKey: boolean;
+  supportedChannels: Record<Channel, boolean>;
 }
 
 export interface BusinessHoursDay {

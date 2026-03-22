@@ -7,7 +7,8 @@ import { CanonicalMessage } from "../channels/types";
 import { aiReplyService } from "./ai-reply.service";
 import { auditLogService } from "./audit-log.service";
 import { conversationService } from "./conversation.service";
-import { outboundMessageService } from "./outbound-message.service";
+import { messageService } from "./message.service";
+import { outboundContentExecutorService } from "./outbound-content-executor.service";
 
 const weekdayMap: Record<string, number> = {
   Sun: 0,
@@ -45,6 +46,22 @@ const toMinutes = (value: string) => {
 };
 
 class AutomationService {
+  private async recordSkip(params: {
+    workspaceId: string;
+    conversationId: string;
+    reason: string;
+    data?: Record<string, unknown>;
+  }) {
+    await auditLogService.record({
+      workspaceId: params.workspaceId,
+      conversationId: params.conversationId,
+      actorType: "automation",
+      eventType: "automation.decision.skipped",
+      reason: params.reason,
+      data: params.data,
+    });
+  }
+
   async handleInbound(params: {
     workspaceId: string;
     conversationId: string;
@@ -54,6 +71,15 @@ class AutomationService {
       params.message.direction !== "inbound" ||
       params.message.senderType !== "customer"
     ) {
+      await this.recordSkip({
+        workspaceId: params.workspaceId,
+        conversationId: params.conversationId,
+        reason: "Inbound message is not customer-originated",
+        data: {
+          direction: params.message.direction,
+          senderType: params.message.senderType,
+        },
+      });
       return;
     }
 
@@ -70,6 +96,13 @@ class AutomationService {
       ]);
 
     if (!conversation || !conversation.aiEnabled) {
+      await this.recordSkip({
+        workspaceId: params.workspaceId,
+        conversationId: params.conversationId,
+        reason: !conversation
+          ? "Conversation not found for automation"
+          : "Conversation AI disabled",
+      });
       return;
     }
 
@@ -77,43 +110,85 @@ class AutomationService {
       conversation.aiState === "human_requested" ||
       conversation.aiState === "human_active"
     ) {
+      await this.recordSkip({
+        workspaceId: params.workspaceId,
+        conversationId: params.conversationId,
+        reason: "Conversation is in human-handoff state",
+        data: {
+          aiState: conversation.aiState,
+        },
+      });
       return;
     }
 
-    if (
-      !aiSettings?.enabled ||
-      !aiSettings.autoReplyEnabled ||
-      !aiSettings.afterHoursEnabled
-    ) {
-      return;
-    }
+    const effectiveEnabled = aiSettings?.enabled ?? true;
+    const effectiveAutoReplyEnabled = aiSettings?.autoReplyEnabled ?? true;
+    const effectiveConfidenceThreshold = aiSettings?.confidenceThreshold ?? 0.7;
 
-    if (!businessHours || !afterHoursRule) {
+    if (!effectiveEnabled || !effectiveAutoReplyEnabled) {
+      await this.recordSkip({
+        workspaceId: params.workspaceId,
+        conversationId: params.conversationId,
+        reason: "Workspace AI auto-reply is disabled",
+        data: {
+          enabled: effectiveEnabled,
+          autoReplyEnabled: effectiveAutoReplyEnabled,
+        },
+      });
       return;
     }
 
     const inboundOccurredAt = params.message.occurredAt ?? new Date();
-    const local = getLocalDayAndTime(inboundOccurredAt, businessHours.timeZone);
-    const dayConfig = businessHours.weeklySchedule.find(
-      (day) => day.dayOfWeek === local.dayOfWeek
-    );
+    let isOutsideBusinessHours = false;
 
-    const withinBusinessHours =
-      !!dayConfig?.enabled &&
-      dayConfig.windows.some((window) => {
-        const start = toMinutes(window.start);
-        const end = toMinutes(window.end);
-        return local.minutes >= start && local.minutes <= end;
+    if (businessHours) {
+      const local = getLocalDayAndTime(inboundOccurredAt, businessHours.timeZone);
+      const dayConfig = businessHours.weeklySchedule.find(
+        (day) => day.dayOfWeek === local.dayOfWeek
+      );
+
+      const withinBusinessHours =
+        !!dayConfig?.enabled &&
+        dayConfig.windows.some((window) => {
+          const start = toMinutes(window.start);
+          const end = toMinutes(window.end);
+          return local.minutes >= start && local.minutes <= end;
+        });
+
+      isOutsideBusinessHours = !withinBusinessHours;
+    }
+
+    if (isOutsideBusinessHours && !afterHoursRule) {
+      await this.recordSkip({
+        workspaceId: params.workspaceId,
+        conversationId: params.conversationId,
+        reason: "Outside business hours but no active after-hours rule",
+        data: {
+          outsideBusinessHours: true,
+        },
       });
-
-    if (withinBusinessHours) {
       return;
     }
 
+    const recentMessages = await messageService.listRecentCanonicalByConversation(
+      params.conversationId,
+      12
+    );
+
     const suggestion = await aiReplyService.generateReply({
       workspaceId: params.workspaceId,
+      conversationId: params.conversationId,
       message: params.message,
+      channel: conversation.channel,
+      recentMessages,
+      workspaceAiOverride: aiSettings
+        ? {
+            encryptedApiKey: aiSettings.geminiApiKey || undefined,
+            modelOverride: aiSettings.geminiModel || undefined,
+          }
+        : undefined,
     });
+
 
     await auditLogService.record({
       workspaceId: params.workspaceId,
@@ -126,13 +201,59 @@ class AutomationService {
       data: {
         decisionKind: suggestion.kind,
         messageKind: params.message.kind,
+        outsideBusinessHours: isOutsideBusinessHours,
       },
     });
 
     if (
       suggestion.kind === "unsupported" ||
-      suggestion.confidence < (aiSettings.confidenceThreshold ?? 0.7)
+      suggestion.kind === "requires_human" ||
+      suggestion.confidence < effectiveConfidenceThreshold
     ) {
+      // Outside business hours with an active fallback text → send it instead of human handoff.
+      if (isOutsideBusinessHours && afterHoursRule) {
+        const fallbackText =
+          typeof (afterHoursRule.action as { fallbackText?: string })?.fallbackText === "string"
+            ? (afterHoursRule.action as { fallbackText: string }).fallbackText
+            : null;
+
+        if (fallbackText) {
+          const replyOccurredAt = new Date(inboundOccurredAt.getTime() + 1000);
+          const result = await outboundContentExecutorService.sendBlocks({
+            conversationId: params.conversationId,
+            senderType: "automation",
+            blocks: [
+              {
+                kind: "text",
+                text: { body: fallbackText, plain: fallbackText },
+              },
+            ],
+            meta: { automationRuleId: String(afterHoursRule._id), sourceHints: [] },
+            source: "automation",
+            occurredAt: replyOccurredAt,
+          });
+          const finalMessage = result.messages[result.messages.length - 1];
+
+          await auditLogService.record({
+            workspaceId: params.workspaceId,
+            conversationId: params.conversationId,
+            messageId: finalMessage ? String(finalMessage._id) : undefined,
+            actorType: "automation",
+            eventType: "automation.reply.sent",
+            reason: "Sent after-hours fallback text (AI confidence too low)",
+            confidence: suggestion.confidence,
+            sourceHints: suggestion.sourceHints,
+            data: {
+              messageIds: result.messages.map((message) => String(message._id)),
+              ruleId: String(afterHoursRule._id),
+              replyType: "after_hours_fallback",
+              outsideBusinessHours: true,
+            },
+          });
+          return;
+        }
+      }
+
       await conversationService.requestHumanHandoff(params.conversationId);
 
       await auditLogService.record({
@@ -145,7 +266,9 @@ class AutomationService {
         sourceHints: suggestion.sourceHints,
         data: {
           messageKind: params.message.kind,
-          ruleId: String(afterHoursRule._id),
+          ruleId: afterHoursRule ? String(afterHoursRule._id) : undefined,
+          outsideBusinessHours: isOutsideBusinessHours,
+          escalationReason: suggestion.kind === "requires_human" ? "Media or high-risk content requires human handling" : undefined,
         },
       });
       return;
@@ -155,26 +278,20 @@ class AutomationService {
       return;
     }
 
-    const responseText = suggestion.text;
     const replyOccurredAt = new Date(inboundOccurredAt.getTime() + 1000);
 
-    const result = await outboundMessageService.send({
+    const result = await outboundContentExecutorService.sendBlocks({
       conversationId: params.conversationId,
-      command: {
-        senderType: "automation",
-        kind: "text",
-        text: {
-          body: responseText,
-          plain: responseText,
-        },
-        meta: {
-          automationRuleId: String(afterHoursRule._id),
-          sourceHints: suggestion.sourceHints,
-        },
-        occurredAt: replyOccurredAt,
+      senderType: "automation",
+      blocks: suggestion.blocks,
+      meta: {
+        automationRuleId: afterHoursRule ? String(afterHoursRule._id) : undefined,
+        sourceHints: suggestion.sourceHints,
       },
       source: "automation",
+      occurredAt: replyOccurredAt,
     });
+    const finalMessage = result.messages[result.messages.length - 1];
 
     await conversationService.setAIState(
       params.conversationId,
@@ -184,15 +301,18 @@ class AutomationService {
     await auditLogService.record({
       workspaceId: params.workspaceId,
       conversationId: params.conversationId,
-      messageId: String(result.message._id),
+      messageId: finalMessage ? String(finalMessage._id) : undefined,
       actorType: "automation",
       eventType: "automation.reply.sent",
       reason: suggestion.reason,
       confidence: suggestion.confidence,
       sourceHints: suggestion.sourceHints,
       data: {
-        ruleId: String(afterHoursRule._id),
+        messageIds: result.messages.map((message) => String(message._id)),
+        blockKinds: suggestion.blocks.map((block) => block.kind),
+        ruleId: afterHoursRule ? String(afterHoursRule._id) : undefined,
         replyType: suggestion.kind,
+        outsideBusinessHours: isOutsideBusinessHours,
       },
     });
   }

@@ -1,17 +1,20 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { EmojiClickData } from "emoji-picker-react";
+import {
+  FormEvent,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSession } from "../hooks/use-session";
 import { apiRequest } from "../services/api";
 import { CannedReply } from "../types/models";
 
+const EmojiPicker = lazy(() => import("emoji-picker-react"));
 const DEFAULT_CATEGORY = "general";
-
-type ReplyCardProps = {
-  item: CannedReply;
-  isEditing: boolean;
-  isDeleting: boolean;
-  onEdit: (item: CannedReply) => void;
-  onDelete: (itemId: string) => void;
-};
 
 function ReplyCard({
   item,
@@ -19,7 +22,13 @@ function ReplyCard({
   isDeleting,
   onEdit,
   onDelete,
-}: ReplyCardProps) {
+}: {
+  item: CannedReply;
+  isEditing: boolean;
+  isDeleting: boolean;
+  onEdit: (item: CannedReply) => void;
+  onDelete: (itemId: string) => void;
+}) {
   return (
     <article
       className={[
@@ -86,22 +95,25 @@ function ReplyCard({
 }
 
 export function CannedRepliesPage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [items, setItems] = useState<CannedReply[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [triggers, setTriggers] = useState("");
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPanelRef = useRef<HTMLDivElement | null>(null);
+  const bodySelectionRef = useRef({ start: 0, end: 0 });
 
   const loadItems = useCallback(async () => {
     if (!workspaceId) return;
@@ -124,7 +136,6 @@ export function CannedRepliesPage() {
       try {
         setIsBooting(true);
         setError(null);
-
         const response = await apiRequest<{ items: CannedReply[] }>(
           "/api/canned-replies",
           {},
@@ -154,13 +165,25 @@ export function CannedRepliesPage() {
     };
   }, [workspaceId]);
 
-  const resetForm = () => {
-    setEditingId(null);
-    setTitle("");
-    setBody("");
-    setTriggers("");
-    setCategory(DEFAULT_CATEGORY);
-  };
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!emojiPanelRef.current) {
+        return;
+      }
+
+      if (!emojiPanelRef.current.contains(event.target as Node)) {
+        setIsEmojiOpen(false);
+      }
+    };
+
+    if (isEmojiOpen) {
+      document.addEventListener("mousedown", onPointerDown);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [isEmojiOpen]);
 
   const parsedTriggers = useMemo(
     () =>
@@ -174,7 +197,9 @@ export function CannedRepliesPage() {
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    if (!query) return items;
+    if (!query) {
+      return items;
+    }
 
     return items.filter((item) => {
       return (
@@ -190,6 +215,51 @@ export function CannedRepliesPage() {
     return new Set(items.map((item) => item.category)).size;
   }, [items]);
 
+  const syncBodySelection = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    bodySelectionRef.current = {
+      start: textarea.selectionStart ?? textarea.value.length,
+      end: textarea.selectionEnd ?? textarea.value.length,
+    };
+  };
+
+  const insertEmojiAtCursor = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setBody((current) => `${current}${emoji}`);
+      return;
+    }
+
+    const { start, end } = bodySelectionRef.current;
+    const nextBody = `${textarea.value.slice(0, start)}${emoji}${textarea.value.slice(end)}`;
+    const nextCaretPosition = start + emoji.length;
+
+    setBody(nextBody);
+    bodySelectionRef.current = {
+      start: nextCaretPosition,
+      end: nextCaretPosition,
+    };
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCaretPosition, nextCaretPosition);
+    });
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setBody("");
+    setTriggers("");
+    setCategory(DEFAULT_CATEGORY);
+    setIsEmojiOpen(false);
+    bodySelectionRef.current = { start: 0, end: 0 };
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!workspaceId) return;
@@ -199,7 +269,7 @@ export function CannedRepliesPage() {
     const trimmedCategory = category.trim() || DEFAULT_CATEGORY;
 
     if (!trimmedTitle || !trimmedBody) {
-      setError("Title and body are required.");
+      setError("Title and message are required.");
       return;
     }
 
@@ -246,6 +316,7 @@ export function CannedRepliesPage() {
     setBody(item.body);
     setTriggers(item.triggers.join(", "));
     setCategory(item.category);
+    setIsEmojiOpen(false);
     setError(null);
   };
 
@@ -284,26 +355,8 @@ export function CannedRepliesPage() {
 
   if (isBooting) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-6">
-          <div className="h-4 w-28 rounded bg-slate-200" />
-          <div className="mt-3 h-8 w-96 rounded bg-slate-200" />
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
-          <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6">
-            <div className="h-12 rounded-2xl bg-slate-100" />
-            <div className="h-32 rounded-2xl bg-slate-100" />
-            <div className="h-12 rounded-2xl bg-slate-100" />
-            <div className="h-24 rounded-2xl bg-slate-100" />
-          </div>
-
-          <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-6">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-32 rounded-2xl bg-slate-100" />
-            ))}
-          </div>
-        </div>
+      <div className="p-6 text-sm text-slate-500">
+        Loading canned replies...
       </div>
     );
   }
@@ -317,11 +370,11 @@ export function CannedRepliesPage() {
               Canned Replies
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-              Fast reusable responses for common seller flows
+              Fast reusable single-message replies
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Create reusable templates for recurring questions like stock
-              checks, store hours, delivery timing, and order follow-up.
+              Keep canned replies simple for staff: one message body, searchable triggers,
+              and full emoji support.
             </p>
           </div>
 
@@ -353,16 +406,9 @@ export function CannedRepliesPage() {
                 {editingId ? "Edit canned reply" : "Create canned reply"}
               </h3>
               <p className="mt-1 text-sm text-slate-500">
-                Add searchable triggers so agents and automations can find the
-                right response faster.
+                Replies stay text-only for faster staff use, but you can add emoji freely.
               </p>
             </div>
-
-            {editingId ? (
-              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
-                Editing existing reply
-              </span>
-            ) : null}
           </div>
 
           <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
@@ -378,18 +424,58 @@ export function CannedRepliesPage() {
               />
             </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-900">
-                Body
-              </span>
+            <div ref={emojiPanelRef} className="relative">
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <span className="block text-sm font-medium text-slate-900">
+                  Message
+                </span>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => setIsEmojiOpen((current) => !current)}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-300 px-3 text-sm text-slate-600 transition hover:bg-slate-50"
+                >
+                  Emoji
+                </button>
+              </div>
+
+              {isEmojiOpen ? (
+                <div className="absolute right-0 z-20 mb-2 w-[22rem] max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <Suspense
+                    fallback={
+                      <div className="flex h-[360px] items-center justify-center text-sm text-slate-500">
+                        Loading emoji picker...
+                      </div>
+                    }
+                  >
+                    <EmojiPicker
+                      onEmojiClick={(emojiData: EmojiClickData) => {
+                        insertEmojiAtCursor(emojiData.emoji);
+                      }}
+                      width="100%"
+                      height={360}
+                      lazyLoadEmojis
+                      previewConfig={{ showPreview: false }}
+                      searchPlaceholder="Search emoji"
+                      skinTonesDisabled
+                    />
+                  </Suspense>
+                </div>
+              ) : null}
+
               <textarea
+                ref={textareaRef}
                 rows={6}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                placeholder="Yes, this item is available in blue and can be shipped this week."
+                onClick={syncBodySelection}
+                onKeyUp={syncBodySelection}
+                onSelect={syncBodySelection}
+                onBlur={syncBodySelection}
+                placeholder="Yes, this item is available 😊"
                 className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
               />
-            </label>
+            </div>
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-900">
@@ -405,19 +491,6 @@ export function CannedRepliesPage() {
                 Separate trigger phrases with commas.
               </p>
             </label>
-
-            {parsedTriggers.length ? (
-              <div className="flex flex-wrap gap-2">
-                {parsedTriggers.map((trigger) => (
-                  <span
-                    key={trigger}
-                    className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
-                  >
-                    {trigger}
-                  </span>
-                ))}
-              </div>
-            ) : null}
 
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-900">
@@ -469,7 +542,7 @@ export function CannedRepliesPage() {
                 Saved replies
               </h3>
               <p className="mt-1 text-sm text-slate-500">
-                Search existing templates by title, content, category, or trigger.
+                Search by title, message, category, or trigger.
               </p>
             </div>
 

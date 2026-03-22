@@ -1,0 +1,1389 @@
+
+===== 2026-03-18T10:47:57.571Z =====
+{
+  "update_id": 237740467,
+  "message": {
+    "message_id": 595,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773830853,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "👋",
+      "set_name": "BearAndBull",
+      "is_animated": true,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJTabqCxaf3BIg_y2A45A92yMry7MYAAikOAALEo1FLa0zFz499NV8BAAdtAAM6BA",
+        "file_unique_id": "AQADKQ4AAsSjUUty",
+        "file_size": 6834,
+        "width": 128,
+        "height": 128
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJTabqCxaf3BIg_y2A45A92yMry7MYAAikOAALEo1FLa0zFz499NV8BAAdtAAM6BA",
+        "file_unique_id": "AQADKQ4AAsSjUUty",
+        "file_size": 6834,
+        "width": 128,
+        "height": 128
+      },
+      "file_id": "CAACAgIAAxkBAAICU2m6gsWn9wSIP8tgOOQPdsjK8uzGAAIpDgACxKNRS2tMxc-PfTVfOgQ",
+      "file_unique_id": "AgADKQ4AAsSjUUs",
+      "file_size": 24685
+    }
+  }
+}
+
+===== 2026-03-18T10:56:37.478Z =====
+{
+  "update_id": 237740468,
+  "message": {
+    "message_id": 597,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773831397,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "🤑",
+      "set_name": "BearAndBull",
+      "is_animated": true,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJOabpz5UJpQyNyY007Tihh_MYeCagAAgkNAAKtC1FL4p8di94d3OMBAAdtAAM6BA",
+        "file_unique_id": "AQADCQ0AAq0LUUty",
+        "file_size": 7416,
+        "width": 128,
+        "height": 128
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJOabpz5UJpQyNyY007Tihh_MYeCagAAgkNAAKtC1FL4p8di94d3OMBAAdtAAM6BA",
+        "file_unique_id": "AQADCQ0AAq0LUUty",
+        "file_size": 7416,
+        "width": 128,
+        "height": 128
+      },
+      "file_id": "CAACAgIAAxkBAAICTmm6c-VCaUMjcmNNO04oYfzGHgmoAAIJDQACrQtRS-KfHYveHdzjOgQ",
+      "file_unique_id": "AgADCQ0AAq0LUUs",
+      "file_size": 64646
+    }
+  }
+}
+
+===== 2026-03-18T10:57:53.948Z =====
+{
+  "update_id": 237740469,
+  "message": {
+    "message_id": 598,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773831473,
+    "location": {
+      "latitude": 19.394548,
+      "longitude": 96.740013
+    }
+  }
+}
+
+===== 2026-03-18T11:09:13.870Z =====
+{
+  "update_id": 237740470,
+  "message": {
+    "message_id": 599,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773832153,
+    "document": {
+      "file_name": "report.docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "file_id": "BQACAgUAAxkBAAICV2m6h9kW2xcVtwdBpbv9C0BLaE0FAAJXHwACDXXRVSGt0-fyzWrCOgQ",
+      "file_unique_id": "AgADVx8AAg110VU",
+      "file_size": 5312760
+    },
+    "caption": "s"
+  }
+}
+
+===== 2026-03-18T11:13:21.535Z =====
+{
+  "update_id": 237740471,
+  "message": {
+    "message_id": 600,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773832401,
+    "document": {
+      "file_name": "report.docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "file_id": "BQACAgUAAxkBAAICWGm6iNAWUetMpHD1wYFfsGuSTcIpAAJaHwACDXXRVSPrTnjIfHd9OgQ",
+      "file_unique_id": "AgADWh8AAg110VU",
+      "file_size": 5312760
+    }
+  }
+}
+
+===== 2026-03-18T11:27:36.167Z =====
+{
+  "update_id": 237740472,
+  "message": {
+    "message_id": 601,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773833256,
+    "media_group_id": "14190666049170517",
+    "photo": [
+      {
+        "file_id": "AgACAgUAAxkBAAICWWm6jCi-JGjN_yenXHX1G0dG3ZCRAALTDmsbDXXRVQxX1rzLzcKrAQADAgADcwADOgQ",
+        "file_unique_id": "AQAD0w5rGw110VV4",
+        "file_size": 1518,
+        "width": 90,
+        "height": 86
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWWm6jCi-JGjN_yenXHX1G0dG3ZCRAALTDmsbDXXRVQxX1rzLzcKrAQADAgADbQADOgQ",
+        "file_unique_id": "AQAD0w5rGw110VVy",
+        "file_size": 31382,
+        "width": 320,
+        "height": 307
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWWm6jCi-JGjN_yenXHX1G0dG3ZCRAALTDmsbDXXRVQxX1rzLzcKrAQADAgADeAADOgQ",
+        "file_unique_id": "AQAD0w5rGw110VV9",
+        "file_size": 161424,
+        "width": 800,
+        "height": 768
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWWm6jCi-JGjN_yenXHX1G0dG3ZCRAALTDmsbDXXRVQxX1rzLzcKrAQADAgADeQADOgQ",
+        "file_unique_id": "AQAD0w5rGw110VV-",
+        "file_size": 264088,
+        "width": 1139,
+        "height": 1093
+      }
+    ]
+  }
+}
+
+===== 2026-03-18T11:27:37.850Z =====
+{
+  "update_id": 237740473,
+  "message": {
+    "message_id": 602,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773833256,
+    "media_group_id": "14190666049170517",
+    "photo": [
+      {
+        "file_id": "AgACAgUAAxkBAAICWmm6jCic-KSqSLtmf8rhVSkfwkZeAALUDmsbDXXRVb0lbaQ6YNE4AQADAgADcwADOgQ",
+        "file_unique_id": "AQAD1A5rGw110VV4",
+        "file_size": 2841,
+        "width": 88,
+        "height": 90
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWmm6jCic-KSqSLtmf8rhVSkfwkZeAALUDmsbDXXRVb0lbaQ6YNE4AQADAgADbQADOgQ",
+        "file_unique_id": "AQAD1A5rGw110VVy",
+        "file_size": 45468,
+        "width": 312,
+        "height": 320
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWmm6jCic-KSqSLtmf8rhVSkfwkZeAALUDmsbDXXRVb0lbaQ6YNE4AQADAgADeAADOgQ",
+        "file_unique_id": "AQAD1A5rGw110VV9",
+        "file_size": 179416,
+        "width": 779,
+        "height": 800
+      },
+      {
+        "file_id": "AgACAgUAAxkBAAICWmm6jCic-KSqSLtmf8rhVSkfwkZeAALUDmsbDXXRVb0lbaQ6YNE4AQADAgADeQADOgQ",
+        "file_unique_id": "AQAD1A5rGw110VV-",
+        "file_size": 255637,
+        "width": 1095,
+        "height": 1124
+      }
+    ]
+  }
+}
+
+===== 2026-03-18T13:26:08.301Z =====
+{
+  "update_id": 237740474,
+  "message": {
+    "message_id": 603,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773840368,
+    "text": "/start",
+    "entities": [
+      {
+        "offset": 0,
+        "length": 6,
+        "type": "bot_command"
+      }
+    ]
+  }
+}
+
+===== 2026-03-18T13:27:26.415Z =====
+{
+  "update_id": 237740475,
+  "message": {
+    "message_id": 604,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773840446,
+    "text": "hi"
+  }
+}
+
+===== 2026-03-18T15:26:53.088Z =====
+{
+  "update_id": 237740476,
+  "message": {
+    "message_id": 605,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773847613,
+    "text": "hi"
+  }
+}
+
+===== 2026-03-18T15:27:03.592Z =====
+{
+  "update_id": 237740477,
+  "message": {
+    "message_id": 606,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773847623,
+    "text": "hi"
+  }
+}
+
+===== 2026-03-18T15:29:41.071Z =====
+{
+  "update_id": 237740478,
+  "message": {
+    "message_id": 607,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773847781,
+    "text": "hey"
+  }
+}
+
+===== 2026-03-18T15:29:59.206Z =====
+{
+  "update_id": 237740479,
+  "message": {
+    "message_id": 608,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773847798,
+    "text": "hey"
+  }
+}
+
+===== 2026-03-18T15:30:48.531Z =====
+{
+  "update_id": 237740480,
+  "message": {
+    "message_id": 609,
+    "from": {
+      "id": 1410298609,
+      "is_bot": false,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1410298609,
+      "first_name": "Eaindra",
+      "last_name": "Mon",
+      "username": "Eaindra25",
+      "type": "private"
+    },
+    "date": 1773847848,
+    "text": "hi"
+  }
+}
+
+===== 2026-03-18T15:33:35.731Z =====
+{
+  "update_id": 237740481,
+  "message": {
+    "message_id": 611,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773848015,
+    "text": "hello, can i buy nec stick"
+  }
+}
+
+===== 2026-03-18T15:33:55.804Z =====
+{
+  "update_id": 237740482,
+  "message": {
+    "message_id": 612,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773848035,
+    "text": "hello, can i buy nec stick"
+  }
+}
+
+===== 2026-03-18T16:21:27.871Z =====
+{
+  "update_id": 237740483,
+  "message": {
+    "message_id": 614,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773850887,
+    "animation": {
+      "file_name": "fck.mp4",
+      "mime_type": "video/mp4",
+      "duration": 1,
+      "width": 640,
+      "height": 640,
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJmabrRBw0kdWcb2W4L2h5Iak3NeDwAAi8TAAICBEBIY7VrZYP1gB4BAAdtAAM6BA",
+        "file_unique_id": "AQADLxMAAgIEQEhy",
+        "file_size": 14000,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJmabrRBw0kdWcb2W4L2h5Iak3NeDwAAi8TAAICBEBIY7VrZYP1gB4BAAdtAAM6BA",
+        "file_unique_id": "AQADLxMAAgIEQEhy",
+        "file_size": 14000,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CgACAgIAAxkBAAICZmm60QcNJHVnG9luC9oeSGpNzXg8AAIvEwACAgRASGO1a2WD9YAeOgQ",
+      "file_unique_id": "AgADLxMAAgIEQEg",
+      "file_size": 105729
+    },
+    "document": {
+      "file_name": "fck.mp4",
+      "mime_type": "video/mp4",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJmabrRBw0kdWcb2W4L2h5Iak3NeDwAAi8TAAICBEBIY7VrZYP1gB4BAAdtAAM6BA",
+        "file_unique_id": "AQADLxMAAgIEQEhy",
+        "file_size": 14000,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJmabrRBw0kdWcb2W4L2h5Iak3NeDwAAi8TAAICBEBIY7VrZYP1gB4BAAdtAAM6BA",
+        "file_unique_id": "AQADLxMAAgIEQEhy",
+        "file_size": 14000,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CgACAgIAAxkBAAICZmm60QcNJHVnG9luC9oeSGpNzXg8AAIvEwACAgRASGO1a2WD9YAeOgQ",
+      "file_unique_id": "AgADLxMAAgIEQEg",
+      "file_size": 105729
+    }
+  }
+}
+
+===== 2026-03-18T16:28:38.854Z =====
+{
+  "update_id": 237740484,
+  "message": {
+    "message_id": 616,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851318,
+    "animation": {
+      "file_name": "bonk-matemática.mp4",
+      "mime_type": "video/mp4",
+      "duration": 2,
+      "width": 320,
+      "height": 180,
+      "thumbnail": {
+        "file_id": "AAMCBAADGQEAAgJoabrStnZwEFaaqFdH73JIbEPiGXYAAlQHAAKdySxREpi_yzsJhV0BAAdtAAM6BA",
+        "file_unique_id": "AQADVAcAAp3JLFFy",
+        "file_size": 6754,
+        "width": 320,
+        "height": 180
+      },
+      "thumb": {
+        "file_id": "AAMCBAADGQEAAgJoabrStnZwEFaaqFdH73JIbEPiGXYAAlQHAAKdySxREpi_yzsJhV0BAAdtAAM6BA",
+        "file_unique_id": "AQADVAcAAp3JLFFy",
+        "file_size": 6754,
+        "width": 320,
+        "height": 180
+      },
+      "file_id": "CgACAgQAAxkBAAICaGm60rZ2cBBWmqhXR-9ySGxD4hl2AAJUBwACncksURKYv8s7CYVdOgQ",
+      "file_unique_id": "AgADVAcAAp3JLFE",
+      "file_size": 7900
+    },
+    "document": {
+      "file_name": "bonk-matemática.mp4",
+      "mime_type": "video/mp4",
+      "thumbnail": {
+        "file_id": "AAMCBAADGQEAAgJoabrStnZwEFaaqFdH73JIbEPiGXYAAlQHAAKdySxREpi_yzsJhV0BAAdtAAM6BA",
+        "file_unique_id": "AQADVAcAAp3JLFFy",
+        "file_size": 6754,
+        "width": 320,
+        "height": 180
+      },
+      "thumb": {
+        "file_id": "AAMCBAADGQEAAgJoabrStnZwEFaaqFdH73JIbEPiGXYAAlQHAAKdySxREpi_yzsJhV0BAAdtAAM6BA",
+        "file_unique_id": "AQADVAcAAp3JLFFy",
+        "file_size": 6754,
+        "width": 320,
+        "height": 180
+      },
+      "file_id": "CgACAgQAAxkBAAICaGm60rZ2cBBWmqhXR-9ySGxD4hl2AAJUBwACncksURKYv8s7CYVdOgQ",
+      "file_unique_id": "AgADVAcAAp3JLFE",
+      "file_size": 7900
+    }
+  }
+}
+
+===== 2026-03-18T16:35:04.464Z =====
+{
+  "update_id": 237740485,
+  "message": {
+    "message_id": 618,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851704,
+    "animation": {
+      "file_name": "trades-deals.mp4",
+      "mime_type": "video/mp4",
+      "duration": 6,
+      "width": 208,
+      "height": 116,
+      "file_id": "CgACAgQAAxkBAAICamm61DiAUozcJSplyz8GrQktQkUZAAIcAwACch0NU_3jt-0JOtJzOgQ",
+      "file_unique_id": "AgADHAMAAnIdDVM",
+      "file_size": 116927
+    },
+    "document": {
+      "file_name": "trades-deals.mp4",
+      "mime_type": "video/mp4",
+      "file_id": "CgACAgQAAxkBAAICamm61DiAUozcJSplyz8GrQktQkUZAAIcAwACch0NU_3jt-0JOtJzOgQ",
+      "file_unique_id": "AgADHAMAAnIdDVM",
+      "file_size": 116927
+    }
+  }
+}
+
+===== 2026-03-18T16:36:53.411Z =====
+{
+  "update_id": 237740486,
+  "message": {
+    "message_id": 620,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851813,
+    "animation": {
+      "file_name": "excited-i'm-so-excited.mp4",
+      "mime_type": "video/mp4",
+      "duration": 1,
+      "width": 200,
+      "height": 164,
+      "thumbnail": {
+        "file_id": "AAMCBAADGQEAAgJsabrUpdB_rWkgCdLLMOUouzHZzoQAApoGAARFUVqglY35wERKAQAHbQADOgQ",
+        "file_unique_id": "AQADmgYABEVRcg",
+        "file_size": 5193,
+        "width": 200,
+        "height": 164
+      },
+      "thumb": {
+        "file_id": "AAMCBAADGQEAAgJsabrUpdB_rWkgCdLLMOUouzHZzoQAApoGAARFUVqglY35wERKAQAHbQADOgQ",
+        "file_unique_id": "AQADmgYABEVRcg",
+        "file_size": 5193,
+        "width": 200,
+        "height": 164
+      },
+      "file_id": "CgACAgQAAxkBAAICbGm61KXQf61pIAnSyzDlKLsx2c6EAAKaBgAERVFaoJWN-cBESjoE",
+      "file_unique_id": "AgADmgYABEVR",
+      "file_size": 8375
+    },
+    "document": {
+      "file_name": "excited-i'm-so-excited.mp4",
+      "mime_type": "video/mp4",
+      "thumbnail": {
+        "file_id": "AAMCBAADGQEAAgJsabrUpdB_rWkgCdLLMOUouzHZzoQAApoGAARFUVqglY35wERKAQAHbQADOgQ",
+        "file_unique_id": "AQADmgYABEVRcg",
+        "file_size": 5193,
+        "width": 200,
+        "height": 164
+      },
+      "thumb": {
+        "file_id": "AAMCBAADGQEAAgJsabrUpdB_rWkgCdLLMOUouzHZzoQAApoGAARFUVqglY35wERKAQAHbQADOgQ",
+        "file_unique_id": "AQADmgYABEVRcg",
+        "file_size": 5193,
+        "width": 200,
+        "height": 164
+      },
+      "file_id": "CgACAgQAAxkBAAICbGm61KXQf61pIAnSyzDlKLsx2c6EAAKaBgAERVFaoJWN-cBESjoE",
+      "file_unique_id": "AgADmgYABEVR",
+      "file_size": 8375
+    }
+  }
+}
+
+===== 2026-03-18T16:37:09.476Z =====
+{
+  "update_id": 237740487,
+  "message": {
+    "message_id": 622,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851829,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "👋",
+      "set_name": "BearAndBull",
+      "is_animated": true,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJTabqCxaf3BIg_y2A45A92yMry7MYAAikOAALEo1FLa0zFz499NV8BAAdtAAM6BA",
+        "file_unique_id": "AQADKQ4AAsSjUUty",
+        "file_size": 6834,
+        "width": 128,
+        "height": 128
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJTabqCxaf3BIg_y2A45A92yMry7MYAAikOAALEo1FLa0zFz499NV8BAAdtAAM6BA",
+        "file_unique_id": "AQADKQ4AAsSjUUty",
+        "file_size": 6834,
+        "width": 128,
+        "height": 128
+      },
+      "file_id": "CAACAgIAAxkBAAICU2m6gsWn9wSIP8tgOOQPdsjK8uzGAAIpDgACxKNRS2tMxc-PfTVfOgQ",
+      "file_unique_id": "AgADKQ4AAsSjUUs",
+      "file_size": 24685
+    }
+  }
+}
+
+===== 2026-03-18T16:37:21.671Z =====
+{
+  "update_id": 237740488,
+  "message": {
+    "message_id": 624,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851841,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "🚦",
+      "set_name": "spv_ef3039d561692567af5677d9440e300f_by_stckrRobot",
+      "is_animated": false,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCBQADGQEAAgJwabrUwVdmG_ne_yIGhA4TBgzS1voAAlQVAAJRTkBUj1dJn3Y-1UwBAAdtAAM6BA",
+        "file_unique_id": "AQADVBUAAlFOQFRy",
+        "file_size": 19220,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCBQADGQEAAgJwabrUwVdmG_ne_yIGhA4TBgzS1voAAlQVAAJRTkBUj1dJn3Y-1UwBAAdtAAM6BA",
+        "file_unique_id": "AQADVBUAAlFOQFRy",
+        "file_size": 19220,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CAACAgUAAxkBAAICcGm61MFXZhv53v8iBoQOEwYM0tb6AAJUFQACUU5AVI9XSZ92PtVMOgQ",
+      "file_unique_id": "AgADVBUAAlFOQFQ",
+      "file_size": 32300
+    }
+  }
+}
+
+===== 2026-03-18T16:37:39.970Z =====
+{
+  "update_id": 237740489,
+  "message": {
+    "message_id": 626,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851859,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "👍",
+      "set_name": "DakoDesign1_by_fStikBot",
+      "is_animated": false,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJyabrU085zDp1jMBO6khFOoOtCno0AAnU3AAJ1L7BIfZc9nygM2p0BAAdtAAM6BA",
+        "file_unique_id": "AQADdTcAAnUvsEhy",
+        "file_size": 9592,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJyabrU085zDp1jMBO6khFOoOtCno0AAnU3AAJ1L7BIfZc9nygM2p0BAAdtAAM6BA",
+        "file_unique_id": "AQADdTcAAnUvsEhy",
+        "file_size": 9592,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CAACAgIAAxkBAAICcmm61NPOcw6dYzATupIRTqDrQp6NAAJ1NwACdS-wSH2XPZ8oDNqdOgQ",
+      "file_unique_id": "AgADdTcAAnUvsEg",
+      "file_size": 18096
+    }
+  }
+}
+
+===== 2026-03-18T16:38:28.655Z =====
+{
+  "update_id": 237740490,
+  "message": {
+    "message_id": 628,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773851908,
+    "poll": {
+      "id": "6186104261865113057",
+      "question": "22",
+      "options": [
+        {
+          "text": "2",
+          "voter_count": 0
+        },
+        {
+          "text": "2",
+          "voter_count": 0
+        }
+      ],
+      "total_voter_count": 0,
+      "is_closed": false,
+      "is_anonymous": true,
+      "type": "regular",
+      "allows_multiple_answers": false
+    }
+  }
+}
+
+===== 2026-03-18T23:39:52.257Z =====
+{
+  "update_id": 237740491,
+  "message": {
+    "message_id": 632,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773877192,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "😏",
+      "set_name": "luxe_besties_vk_by_TgEmojiBot",
+      "is_animated": false,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJ4abs3yJ9fsqky56WAYnNmdOo-ewEAAlFiAAIX9_BL7LaaXahRIrkBAAdtAAM6BA",
+        "file_unique_id": "AQADUWIAAhf38Ety",
+        "file_size": 33898,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJ4abs3yJ9fsqky56WAYnNmdOo-ewEAAlFiAAIX9_BL7LaaXahRIrkBAAdtAAM6BA",
+        "file_unique_id": "AQADUWIAAhf38Ety",
+        "file_size": 33898,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CAACAgIAAxkBAAICeGm7N8ifX7KpMuelgGJzZnTqPnsBAAJRYgACF_fwS-y2ml2oUSK5OgQ",
+      "file_unique_id": "AgADUWIAAhf38Es",
+      "file_size": 60944
+    }
+  }
+}
+
+===== 2026-03-18T23:40:04.173Z =====
+{
+  "update_id": 237740492,
+  "message": {
+    "message_id": 634,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773877204,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "💯",
+      "set_name": "seaweedcat",
+      "is_animated": false,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJ6abs31N9OgyRaKV7oM3fqNkqRzRcAAsxMAAJ1PwhK3ihihSpH61ABAAdtAAM6BA",
+        "file_unique_id": "AQADzEwAAnU_CEpy",
+        "file_size": 15878,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJ6abs31N9OgyRaKV7oM3fqNkqRzRcAAsxMAAJ1PwhK3ihihSpH61ABAAdtAAM6BA",
+        "file_unique_id": "AQADzEwAAnU_CEpy",
+        "file_size": 15878,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CAACAgIAAxkBAAICemm7N9TfToMkWile6DN36jZKkc0XAALMTAACdT8ISt4oYoUqR-tQOgQ",
+      "file_unique_id": "AgADzEwAAnU_CEo",
+      "file_size": 30178
+    }
+  }
+}
+
+===== 2026-03-19T00:06:55.280Z =====
+{
+  "update_id": 237740493,
+  "message": {
+    "message_id": 636,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773878815,
+    "sticker": {
+      "width": 512,
+      "height": 512,
+      "emoji": "👓",
+      "set_name": "uzkoglazki",
+      "is_animated": false,
+      "is_video": false,
+      "type": "regular",
+      "thumbnail": {
+        "file_id": "AAMCAgADGQEAAgJ8abs-H4MzXaAwMvvtGdgwQcLg6vQAAvRrAAKP2NhIlVrCyY6Oe4wBAAdtAAM6BA",
+        "file_unique_id": "AQAD9GsAAo_Y2Ehy",
+        "file_size": 33998,
+        "width": 320,
+        "height": 320
+      },
+      "thumb": {
+        "file_id": "AAMCAgADGQEAAgJ8abs-H4MzXaAwMvvtGdgwQcLg6vQAAvRrAAKP2NhIlVrCyY6Oe4wBAAdtAAM6BA",
+        "file_unique_id": "AQAD9GsAAo_Y2Ehy",
+        "file_size": 33998,
+        "width": 320,
+        "height": 320
+      },
+      "file_id": "CAACAgIAAxkBAAICfGm7Ph-DM12gMDL77RnYMEHC4Or0AAL0awACj9jYSJVawsmOjnuMOgQ",
+      "file_unique_id": "AgAD9GsAAo_Y2Eg",
+      "file_size": 97976
+    }
+  }
+}
+
+===== 2026-03-19T00:29:46.283Z =====
+{
+  "update_id": 237740494,
+  "message": {
+    "message_id": 638,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773880186,
+    "text": "yea i wanna know about grade 9"
+  }
+}
+
+===== 2026-03-19T00:30:00.023Z =====
+{
+  "update_id": 237740495,
+  "message": {
+    "message_id": 641,
+    "from": {
+      "id": 1674774616,
+      "is_bot": false,
+      "first_name": "Zet",
+      "username": "zet229",
+      "language_code": "en"
+    },
+    "chat": {
+      "id": 1674774616,
+      "first_name": "Zet",
+      "username": "zet229",
+      "type": "private"
+    },
+    "date": 1773880200,
+    "text": "hey"
+  }
+}
+
+===== 2026-03-19T00:42:56.560Z =====
+{
+  "update_id": 1002,
+  "message": {
+    "message_id": 1002,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Do you have blue?"
+  }
+}
+
+===== 2026-03-19T00:42:56.590Z =====
+{
+  "update_id": 2001,
+  "message": {
+    "message_id": 2001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "sticker": {
+      "file_id": "sticker-1"
+    }
+  }
+}
+
+===== 2026-03-19T00:42:57.255Z =====
+{
+  "update_id": 1001,
+  "message": {
+    "message_id": 1001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Hello"
+  }
+}
+
+===== 2026-03-19T00:42:58.462Z =====
+{
+  "update_id": 1001,
+  "message": {
+    "message_id": 1001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Hello"
+  }
+}
+
+===== 2026-03-19T00:42:58.515Z =====
+{
+  "update_id": 3001,
+  "message": {
+    "message_id": 3001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Is this available?"
+  }
+}
+
+===== 2026-03-19T00:42:58.581Z =====
+{
+  "update_id": 3501,
+  "message": {
+    "message_id": 3501,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Is this available today?"
+  }
+}
+
+===== 2026-03-19T00:42:58.621Z =====
+{
+  "update_id": 4001,
+  "message": {
+    "message_id": 4001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Can you compare three fabrics and suggest one?"
+  }
+}
+
+===== 2026-03-19T00:42:58.859Z =====
+{
+  "update_id": 5001,
+  "message": {
+    "message_id": 5001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Hello"
+  }
+}
+
+===== 2026-03-19T00:42:58.875Z =====
+{
+  "update_id": 5002,
+  "message": {
+    "message_id": 5002,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "I need combined"
+  }
+}
+
+===== 2026-03-19T00:42:58.921Z =====
+{
+  "update_id": 6001,
+  "message": {
+    "message_id": 6001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "part one"
+  }
+}
+
+===== 2026-03-19T00:42:58.938Z =====
+{
+  "update_id": 6002,
+  "message": {
+    "message_id": 6002,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "part two"
+  }
+}
+
+===== 2026-03-19T00:42:58.961Z =====
+{
+  "update_id": 7001,
+  "message": {
+    "message_id": 7001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "first text"
+  }
+}
+
+===== 2026-03-19T00:42:58.976Z =====
+{
+  "update_id": 7002,
+  "message": {
+    "message_id": 7002,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina"
+    },
+    "photo": [
+      {
+        "file_id": "photo1",
+        "width": 100,
+        "height": 100
+      }
+    ]
+  }
+}
+
+===== 2026-03-19T00:42:59.394Z =====
+{
+  "update_id": 1001,
+  "message": {
+    "message_id": 1001,
+    "date": 1772935200,
+    "chat": {
+      "id": 5001
+    },
+    "from": {
+      "id": 7001,
+      "first_name": "Mina",
+      "username": "mina_shop"
+    },
+    "text": "Hello"
+  }
+}

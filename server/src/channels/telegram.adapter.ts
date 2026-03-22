@@ -2,6 +2,25 @@ import axios from "axios";
 import { BaseChannelAdapter } from "./base.adapter";
 import { CanonicalMessage, ChannelCapabilities } from "./types";
 
+const GIF_URL_REGEX = /https?:\/\/[^\s]+\.gif(?:\?[^\s]*)?/gi;
+
+const extractGifUrls = (text?: string) => {
+  if (!text) {
+    return [];
+  }
+
+  const matches = text.match(GIF_URL_REGEX);
+  return matches ? Array.from(new Set(matches)) : [];
+};
+
+const stripGifUrls = (text?: string) => {
+  if (!text) {
+    return "";
+  }
+
+  return text.replace(GIF_URL_REGEX, " ").replace(/\s+/g, " ").trim();
+};
+
 type TelegramPhoto = {
   file_id: string;
   width?: number;
@@ -12,6 +31,7 @@ type TelegramPhoto = {
 type TelegramMessagePayload = {
   message_id: number;
   date?: number;
+  media_group_id?: string;
   chat: { id: number | string };
   from?: {
     id: number | string;
@@ -52,6 +72,19 @@ type TelegramMessagePayload = {
     file_size?: number;
     thumbnail?: { file_id: string };
   };
+  poll?: {
+    id?: string;
+    question?: string;
+    options?: Array<{
+      text?: string;
+      voter_count?: number;
+    }>;
+    total_voter_count?: number;
+    is_closed?: boolean;
+    is_anonymous?: boolean;
+    type?: string;
+    allows_multiple_answers?: boolean;
+  };
   location?: {
     latitude: number;
     longitude: number;
@@ -61,8 +94,37 @@ type TelegramMessagePayload = {
     last_name?: string;
     phone_number?: string;
   };
-  sticker?: unknown;
-  animation?: unknown;
+  sticker?: {
+    file_id: string;
+    width?: number;
+    height?: number;
+    file_size?: number;
+    emoji?: string;
+    is_animated?: boolean;
+    is_video?: boolean;
+    thumbnail?: {
+      file_id: string;
+      width?: number;
+      height?: number;
+      file_size?: number;
+    };
+    thumb?: {
+      file_id: string;
+      width?: number;
+      height?: number;
+      file_size?: number;
+    };
+  };
+  animation?: {
+    file_id: string;
+    file_name?: string;
+    mime_type?: string;
+    file_size?: number;
+    duration?: number;
+    width?: number;
+    height?: number;
+    thumbnail?: { file_id: string };
+  };
 };
 
 type TelegramUpdate = {
@@ -83,6 +145,18 @@ type TelegramUpdate = {
 
 export class TelegramAdapter extends BaseChannelAdapter {
   channel = "telegram" as const;
+
+  private isGifLikeMedia(message: CanonicalMessage) {
+    const media = message.media?.[0];
+    const mimeType = media?.mimeType?.toLowerCase() ?? "";
+    const filename = media?.filename?.toLowerCase() ?? "";
+    const url = (media?.storedAssetUrl ?? media?.url ?? "").toLowerCase();
+    return (
+      mimeType.includes("image/gif") ||
+      filename.endsWith(".gif") ||
+      /\.gif(\?|$)/i.test(url)
+    );
+  }
 
   async verifyWebhook(input: {
     headers: Record<string, string>;
@@ -109,12 +183,14 @@ export class TelegramAdapter extends BaseChannelAdapter {
       },
       outbound: {
         text: true,
-        image: false,
-        video: false,
-        audio: false,
-        file: false,
-        location: false,
-        contact: false,
+        image: true,
+        video: true,
+        audio: true,
+        file: true,
+        sticker: true,
+        location: true,
+        contact: true,
+        // Explicit Telegram button/keyboard rendering is not implemented in this adapter yet.
         interactive: false,
       },
     };
@@ -192,6 +268,29 @@ export class TelegramAdapter extends BaseChannelAdapter {
     };
 
     if (message.text) {
+      const gifUrls = extractGifUrls(message.text);
+      if (gifUrls.length > 0) {
+        const caption = stripGifUrls(message.text);
+        return [
+          {
+            ...base,
+            kind: "image",
+            ...(caption
+              ? {
+                  text: {
+                    body: caption,
+                    plain: caption,
+                  },
+                }
+              : {}),
+            media: gifUrls.map((url) => ({
+              url,
+              mimeType: "image/gif",
+            })),
+          },
+        ];
+      }
+
       return [
         {
           ...base,
@@ -221,6 +320,9 @@ export class TelegramAdapter extends BaseChannelAdapter {
               size: largest.file_size,
             },
           ],
+          meta: message.media_group_id
+            ? { telegramMediaGroupId: message.media_group_id }
+            : undefined,
         },
       ];
     }
@@ -295,26 +397,6 @@ export class TelegramAdapter extends BaseChannelAdapter {
       ];
     }
 
-    if (message.document) {
-      return [
-        {
-          ...base,
-          kind: "file",
-          text: message.caption
-            ? { body: message.caption, plain: message.caption }
-            : undefined,
-          media: [
-            {
-              providerFileId: message.document.file_id,
-              filename: message.document.file_name,
-              mimeType: message.document.mime_type,
-              size: message.document.file_size,
-            },
-          ],
-        },
-      ];
-    }
-
     if (message.location) {
       return [
         {
@@ -344,6 +426,124 @@ export class TelegramAdapter extends BaseChannelAdapter {
       ];
     }
 
+    if (message.poll) {
+      const question = message.poll.question?.trim() ?? "Untitled poll";
+      const options = (message.poll.options ?? [])
+        .map((option) => option.text?.trim())
+        .filter((option): option is string => !!option);
+      const pollText = options.length
+        ? `Poll: ${question}\nOptions: ${options.join(" | ")}`
+        : `Poll: ${question}`;
+
+      return [
+        {
+          ...base,
+          kind: "interactive",
+          text: {
+            body: pollText,
+            plain: pollText,
+          },
+          interactive: {
+            subtype: "poll",
+            label: question,
+            value: message.poll.id,
+            payload: {
+              id: message.poll.id,
+              question,
+              options: message.poll.options ?? [],
+              totalVoterCount: message.poll.total_voter_count,
+              isClosed: message.poll.is_closed,
+              isAnonymous: message.poll.is_anonymous,
+              type: message.poll.type,
+              allowsMultipleAnswers: message.poll.allows_multiple_answers,
+            },
+          },
+        },
+      ];
+    }
+
+    if (message.sticker) {
+      const sticker = message.sticker;
+      const stickerThumbnail = sticker.thumbnail ?? sticker.thumb;
+      const isAnimatedSticker = !!sticker.is_animated && !sticker.is_video;
+      const useThumbnailPreview = isAnimatedSticker && !!stickerThumbnail?.file_id;
+      const selectedFileId = useThumbnailPreview
+        ? (stickerThumbnail?.file_id as string)
+        : sticker.file_id;
+      return [
+        {
+          ...base,
+          kind: "sticker" as const,
+          text: sticker.emoji ? { body: sticker.emoji, plain: sticker.emoji } : undefined,
+          meta: {
+            isAnimated: sticker.is_animated ?? false,
+            isVideo: sticker.is_video ?? false,
+            previewFromThumbnail: useThumbnailPreview,
+            originalStickerFileId: sticker.file_id,
+          },
+          media: [
+            {
+              providerFileId: selectedFileId,
+              width: useThumbnailPreview
+                ? stickerThumbnail?.width ?? sticker.width
+                : sticker.width,
+              height: useThumbnailPreview
+                ? stickerThumbnail?.height ?? sticker.height
+                : sticker.height,
+              size: useThumbnailPreview
+                ? stickerThumbnail?.file_size ?? sticker.file_size
+                : sticker.file_size,
+              mimeType: sticker.is_video ? "video/webm" : "image/webp",
+            },
+          ],
+        },
+      ];
+    }
+
+    if (message.animation) {
+      const anim = message.animation;
+      return [
+        {
+          ...base,
+          kind: "video" as const,
+          text: message.caption
+            ? { body: message.caption, plain: message.caption }
+            : undefined,
+          media: [
+            {
+              providerFileId: anim.file_id,
+              filename: anim.file_name,
+              mimeType: anim.mime_type ?? "video/mp4",
+              size: anim.file_size,
+              durationMs: anim.duration ? anim.duration * 1000 : undefined,
+              width: anim.width,
+              height: anim.height,
+            },
+          ],
+        },
+      ];
+    }
+
+    if (message.document) {
+      return [
+        {
+          ...base,
+          kind: "file",
+          text: message.caption
+            ? { body: message.caption, plain: message.caption }
+            : undefined,
+          media: [
+            {
+              providerFileId: message.document.file_id,
+              filename: message.document.file_name,
+              mimeType: message.document.mime_type,
+              size: message.document.file_size,
+            },
+          ],
+        },
+      ];
+    }
+
     return [
       this.buildUnsupportedMessage(base, "Telegram payload type is not mapped in MVP"),
     ];
@@ -358,23 +558,169 @@ export class TelegramAdapter extends BaseChannelAdapter {
       webhookConfig: Record<string, unknown>;
     };
   }) {
-    const request = {
-      chat_id: input.conversation.externalChatId,
-      text: input.message.text?.body ?? "",
-    };
-
     const botToken = String(input.connection.credentials.botToken ?? "");
     if (!botToken) {
       return {
         status: "failed" as const,
         error: "Missing Telegram bot token",
-        request,
+      };
+    }
+
+    const media = input.message.media?.[0];
+    const mediaUrl = media?.storedAssetUrl ?? media?.url;
+
+    let request: unknown;
+    let endpoint = "sendMessage";
+
+    if (input.message.kind === "text") {
+      endpoint = "sendMessage";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        text: input.message.text?.body ?? "",
+      };
+    } else if (input.message.kind === "image") {
+      const outboundMedia = input.message.media ?? [];
+      if (!outboundMedia.length) {
+        return {
+          status: "failed" as const,
+          error: "Telegram image outbound requires at least one media item",
+        };
+      }
+
+      if (outboundMedia.length === 1 && this.isGifLikeMedia(input.message)) {
+        if (!mediaUrl) {
+          return {
+            status: "failed" as const,
+            error: "Telegram GIF outbound requires media[0].url or media[0].storedAssetUrl",
+          };
+        }
+        endpoint = "sendAnimation";
+        request = {
+          chat_id: input.conversation.externalChatId,
+          animation: mediaUrl,
+          caption: input.message.text?.body,
+        };
+      } else if (outboundMedia.length > 1) {
+        const mediaGroup = outboundMedia.map((item, index) => {
+          const url = item.storedAssetUrl ?? item.url;
+          if (!url) {
+            throw new Error(
+              `Telegram image media item at index ${index} is missing url/storedAssetUrl`
+            );
+          }
+          return {
+            type: "photo",
+            media: url,
+            caption: index === 0 ? input.message.text?.body : undefined,
+          };
+        });
+
+        endpoint = "sendMediaGroup";
+        request = {
+          chat_id: input.conversation.externalChatId,
+          media: mediaGroup,
+        };
+      } else {
+        if (!mediaUrl) {
+          return {
+            status: "failed" as const,
+            error: "Telegram image outbound requires media[0].url or media[0].storedAssetUrl",
+          };
+        }
+        endpoint = "sendPhoto";
+        request = {
+          chat_id: input.conversation.externalChatId,
+          photo: mediaUrl,
+          caption: input.message.text?.body,
+        };
+      }
+    } else if (input.message.kind === "video") {
+      if (!mediaUrl) {
+        return {
+          status: "failed" as const,
+          error: "Telegram video outbound requires media[0].url or media[0].storedAssetUrl",
+        };
+      }
+      endpoint = "sendVideo";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        video: mediaUrl,
+        caption: input.message.text?.body,
+      };
+    } else if (input.message.kind === "audio") {
+      if (!mediaUrl) {
+        return {
+          status: "failed" as const,
+          error: "Telegram audio outbound requires media[0].url or media[0].storedAssetUrl",
+        };
+      }
+      endpoint = "sendAudio";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        audio: mediaUrl,
+        caption: input.message.text?.body,
+      };
+    } else if (input.message.kind === "file") {
+      if (!mediaUrl) {
+        return {
+          status: "failed" as const,
+          error: "Telegram file outbound requires media[0].url or media[0].storedAssetUrl",
+        };
+      }
+      endpoint = "sendDocument";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        document: mediaUrl,
+        caption: input.message.text?.body,
+      };
+    } else if (input.message.kind === "location") {
+      endpoint = "sendLocation";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        latitude: input.message.location?.lat,
+        longitude: input.message.location?.lng,
+      };
+    } else if (input.message.kind === "contact") {
+      endpoint = "sendContact";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        phone_number: input.message.contact?.phone,
+        first_name: input.message.contact?.name ?? "Contact",
+      };
+    } else if (input.message.kind === "interactive") {
+      endpoint = "sendMessage";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        text: input.message.text?.body ?? "",
+      };
+    } else if (input.message.kind === "sticker") {
+      const stickerInput =
+        String(input.message.meta?.originalStickerFileId ?? "").trim() ||
+        String(input.message.meta?.platformStickerId ?? "").trim() ||
+        String(input.message.media?.[0]?.providerFileId ?? "").trim();
+
+      if (!stickerInput) {
+        return {
+          status: "failed" as const,
+          error: "Telegram sticker outbound requires meta.platformStickerId (or meta.originalStickerFileId)",
+        };
+      }
+
+      endpoint = "sendSticker";
+      request = {
+        chat_id: input.conversation.externalChatId,
+        sticker: stickerInput,
+      };
+    } else {
+      return {
+        status: "failed" as const,
+        error: `Telegram does not support outbound kind ${input.message.kind}`,
       };
     }
 
     try {
       const response = await axios.post(
-        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        `https://api.telegram.org/bot${botToken}/${endpoint}`,
         request
       );
 

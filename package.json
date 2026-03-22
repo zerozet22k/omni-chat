@@ -1,0 +1,12 @@
+{
+  "name": "elqen-zero-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:public": "concurrently \"npm run dev:public --prefix server\" \"npm run dev --prefix client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

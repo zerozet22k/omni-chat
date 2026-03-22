@@ -5,13 +5,16 @@ import {
 } from "../../models";
 import { asyncHandler } from "../../lib/async-handler";
 import { updateAutomationsSchema } from "../../lib/validators";
+import { requireWorkspace } from "../../middleware/require-workspace";
+import { requireRole } from "../../middleware/require-role";
 
 const router = Router();
+router.use(requireWorkspace);
 
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const workspaceId = String(req.query.workspaceId ?? "");
+    const workspaceId = String(req.workspace?._id ?? "");
     const [businessHours, afterHoursRule] = await Promise.all([
       BusinessHoursModel.findOne({ workspaceId }),
       AutomationRuleModel.findOne({
@@ -29,8 +32,12 @@ router.get(
 
 router.patch(
   "/",
+  requireRole(["owner", "admin"]),
   asyncHandler(async (req, res) => {
-    const payload = updateAutomationsSchema.parse(req.body);
+    const payload = updateAutomationsSchema.parse({
+      ...req.body,
+      workspaceId: String(req.workspace?._id ?? ""),
+    });
 
     const [businessHours, afterHoursRule] = await Promise.all([
       payload.businessHours

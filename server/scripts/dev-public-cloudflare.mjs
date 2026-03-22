@@ -5,9 +5,13 @@ import path from "node:path";
 
 const PORT = Number(process.env.PORT || 4000);
 const SERVER_START_CMD = process.env.SERVER_START_CMD || "npm run dev";
+const REHOOK_ON_START = process.env.REHOOK_ON_START !== "false";
+const REHOOK_WORKSPACE_ID = process.env.REHOOK_WORKSPACE_ID || "";
+const REHOOK_AUTH_TOKEN = process.env.REHOOK_AUTH_TOKEN || "";
 
 let cloudflared;
 let server;
+let rehookTriggered = false;
 
 function splitCommand(command) {
   return command.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((part) => {
@@ -50,6 +54,50 @@ function startServer(publicUrl) {
     cleanup();
     process.exit(code ?? 0);
   });
+
+  if (REHOOK_ON_START && !rehookTriggered) {
+    rehookTriggered = true;
+    void rehookWebhooks();
+  }
+}
+
+async function rehookWebhooks() {
+  if (!REHOOK_AUTH_TOKEN) {
+    console.log("[rehook] skipped because REHOOK_AUTH_TOKEN is not set");
+    return;
+  }
+
+  const endpoint = `http://127.0.0.1:${PORT}/api/channels/rehook`;
+  const body = REHOOK_WORKSPACE_ID
+    ? { workspaceId: REHOOK_WORKSPACE_ID }
+    : {};
+
+  for (let attempt = 1; attempt <= 20; attempt += 1) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${REHOOK_AUTH_TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.warn(`[rehook] request failed (${response.status}): ${text}`);
+      } else {
+        const payload = await response.json();
+        console.log(`[rehook] updated ${payload.updated ?? 0} connection(s)`);
+      }
+      return;
+    } catch {
+      // Wait for server startup and retry.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  console.warn("[rehook] unable to reach local server after startup; skipping webhook rehook");
 }
 
 function cleanup() {

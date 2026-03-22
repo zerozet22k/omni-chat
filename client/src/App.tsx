@@ -9,15 +9,16 @@ import { ChannelsPage } from "./pages/ChannelsPage";
 import { InboxPage } from "./pages/InboxPage";
 import { KnowledgePage } from "./pages/KnowledgePage";
 import { LoginPage } from "./pages/LoginPage";
+import { WorkspaceMembersPage } from "./pages/WorkspaceMembersPage";
 
 function ProtectedLayout() {
-  const { session, loading } = useSession();
+  const { session, activeWorkspace, loading } = useSession();
 
   if (loading) {
     return <div className="page-loader">Loading workspace...</div>;
   }
 
-  if (!session) {
+  if (!session || !activeWorkspace) {
     return <Navigate to="/" replace />;
   }
 
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/canned-replies" element={<CannedRepliesPage />} />
         <Route path="/automations" element={<AutomationsPage />} />
         <Route path="/ai-settings" element={<AISettingsPage />} />
+        <Route path="/workspace-members" element={<WorkspaceMembersPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

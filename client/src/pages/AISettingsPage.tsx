@@ -1,7 +1,16 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useSession } from "../hooks/use-session";
 import { apiRequest } from "../services/api";
-import { AISettings, AuditLog } from "../types/models";
+import { AISettings, AuditLog, Channel } from "../types/models";
+import geminiModelOptionsData from "../utils/gemini-model-options.json";
+
+const geminiModelOptions = geminiModelOptionsData.models;
+const channelLabels: Record<Channel, string> = {
+  facebook: "Messenger",
+  telegram: "Telegram",
+  viber: "Viber",
+  tiktok: "TikTok",
+};
 
 type ToggleRowProps = {
   label: string;
@@ -40,8 +49,8 @@ function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
 }
 
 export function AISettingsPage() {
-  const { session } = useSession();
-  const workspaceId = session?.workspace?._id;
+  const { activeWorkspace } = useSession();
+  const workspaceId = activeWorkspace?._id;
 
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -49,6 +58,19 @@ export function AISettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshingLogs, setIsRefreshingLogs] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
+  const [clearGeminiApiKey, setClearGeminiApiKey] = useState(false);
+
+  const geminiKeyStatusLabel = clearGeminiApiKey
+    ? "Key will be removed"
+    : geminiApiKeyInput.trim()
+    ? settings?.hasGeminiApiKey
+      ? "Replacement key ready"
+      : "New key ready"
+    : settings?.hasGeminiApiKey
+    ? "Workspace key saved"
+    : "No workspace key saved";
 
   const loadSettings = useCallback(async () => {
     if (!workspaceId) return;
@@ -68,8 +90,19 @@ export function AISettingsPage() {
         confidenceThreshold: 0.7,
         fallbackMessage:
           "Thanks for your message. A teammate will follow up soon.",
+        geminiModel: "",
+        hasGeminiApiKey: false,
+        supportedChannels: {
+          facebook: true,
+          telegram: true,
+          viber: true,
+          tiktok: true,
+        },
       }
     );
+    setSaveMessage(null);
+    setGeminiApiKeyInput("");
+    setClearGeminiApiKey(false);
   }, [workspaceId]);
 
   const loadLogs = useCallback(async () => {
@@ -122,13 +155,39 @@ export function AISettingsPage() {
     try {
       setIsSaving(true);
       setError(null);
+      setSaveMessage(null);
+
+      const payload: Record<string, unknown> = {
+        enabled: settings.enabled,
+        autoReplyEnabled: settings.autoReplyEnabled,
+        afterHoursEnabled: settings.afterHoursEnabled,
+        confidenceThreshold: settings.confidenceThreshold,
+        fallbackMessage: settings.fallbackMessage,
+        geminiModel: settings.geminiModel.trim(),
+        supportedChannels: settings.supportedChannels,
+      };
+
+      if (geminiApiKeyInput.trim()) {
+        payload.geminiApiKey = geminiApiKeyInput.trim();
+      } else if (clearGeminiApiKey) {
+        payload.geminiApiKey = "";
+      }
 
       const response = await apiRequest<{ settings: AISettings }>("/api/ai-settings", {
         method: "PATCH",
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
 
       setSettings(response.settings);
+      if (clearGeminiApiKey) {
+        setSaveMessage("Workspace Gemini key removed.");
+      } else if (geminiApiKeyInput.trim()) {
+        setSaveMessage("Workspace Gemini key saved.");
+      } else {
+        setSaveMessage("AI settings saved.");
+      }
+      setGeminiApiKeyInput("");
+      setClearGeminiApiKey(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings.");
     } finally {
@@ -188,14 +247,14 @@ export function AISettingsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              AI Settings
+              Admin Settings
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-              Rule-first auto reply behavior
+              Workspace automation and channel controls
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Control when AI is active, how aggressive automation should be,
-              and what customers receive when confidence is too low.
+              Control which messaging channels are enabled for this workspace,
+              when AI is active, and what customers receive when confidence is too low.
             </p>
           </div>
 
@@ -220,6 +279,12 @@ export function AISettingsPage() {
         </div>
       ) : null}
 
+      {saveMessage ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {saveMessage}
+        </div>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
         <form
           className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -232,7 +297,148 @@ export function AISettingsPage() {
             </p>
           </div>
 
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900">Gemini provider</h4>
+                <p className="mt-1 text-sm text-slate-500">
+                  Manage the workspace Gemini stack from the UI instead of editing JSON or env by hand.
+                </p>
+              </div>
+
+              <span
+                className={[
+                  "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1",
+                  clearGeminiApiKey
+                    ? "bg-amber-50 text-amber-700 ring-amber-200"
+                    : settings.hasGeminiApiKey || geminiApiKeyInput.trim()
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    : "bg-amber-50 text-amber-700 ring-amber-200",
+                ].join(" ")}
+              >
+                {geminiKeyStatusLabel}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                  Gemini API key
+                </span>
+                <input
+                  type="password"
+                  value={geminiApiKeyInput}
+                  onChange={(event) => {
+                    setSaveMessage(null);
+                    setGeminiApiKeyInput(event.target.value);
+                    if (event.target.value.trim()) {
+                      setClearGeminiApiKey(false);
+                    }
+                  }}
+                  placeholder={settings.hasGeminiApiKey ? "Leave blank to keep current key" : "Enter workspace Gemini API key"}
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  The current key is never sent back to the browser. Enter a new one only when replacing it.
+                </p>
+                {geminiApiKeyInput.trim() ? (
+                  <p className="mt-1.5 text-xs font-medium text-emerald-700">
+                    New workspace key entered. Save AI settings to apply it.
+                  </p>
+                ) : null}
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-900">
+                  Gemini model
+                </span>
+                <select
+                  value={settings.geminiModel}
+                  onChange={(event) =>
+                    setSettings((current) =>
+                      current ? { ...current, geminiModel: event.target.value } : current
+                    )
+                  }
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                >
+                  <option value="">Use server default model</option>
+                  {geminiModelOptions.map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Leave blank to use the server default model.
+                </p>
+                {settings.geminiModel ? (
+                  <p className="mt-1.5 text-xs text-slate-600">
+                    Selected: {geminiModelOptions.find((model) => model.value === settings.geminiModel)?.description ?? settings.geminiModel}
+                  </p>
+                ) : null}
+              </label>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+              <p className="text-sm text-slate-600">
+                Auto reply now uses your configured Gemini model during normal hours when auto reply is enabled, and outside business hours only when after-hours automation is enabled.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveMessage(null);
+                  setGeminiApiKeyInput("");
+                  setClearGeminiApiKey(true);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-rose-300 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+              >
+                Clear saved key
+              </button>
+            </div>
+
+            {clearGeminiApiKey ? (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                The saved workspace Gemini key will be removed when you save these settings.
+              </div>
+            ) : null}
+          </div>
+
           <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-slate-900">Channel support</h4>
+                <p className="mt-1 text-sm text-slate-500">
+                  Disable a channel here to block new connections and outbound sends for that workspace.
+                  Existing conversations remain visible for reference.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {(Object.keys(channelLabels) as Channel[]).map((channel) => (
+                  <ToggleRow
+                    key={channel}
+                    label={channelLabels[channel]}
+                    description={`Allow ${channelLabels[channel]} connections and outbound replies in this workspace.`}
+                    checked={settings.supportedChannels[channel]}
+                    onChange={(value) =>
+                      setSettings((current) =>
+                        current
+                          ? {
+                              ...current,
+                              supportedChannels: {
+                                ...current.supportedChannels,
+                                [channel]: value,
+                              },
+                            }
+                          : current
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
             <ToggleRow
               label="AI enabled"
               description="Master switch for all AI behavior in this workspace."
@@ -361,7 +567,7 @@ export function AISettingsPage() {
               type="submit"
               disabled={isSaving}
             >
-              {isSaving ? "Saving..." : "Save AI settings"}
+              {isSaving ? "Saving..." : "Save settings"}
             </button>
           </div>
         </form>

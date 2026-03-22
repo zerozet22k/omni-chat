@@ -2,6 +2,34 @@ import axios from "axios";
 import { BaseChannelAdapter } from "./base.adapter";
 import { CanonicalMessage, ChannelCapabilities } from "./types";
 
+const VIBER_INBOUND_MEDIA_TTL_MS = 60 * 60 * 1000;
+
+const GIF_URL_REGEX = /https?:\/\/[^\s]+\.gif(?:\?[^\s]*)?/gi;
+
+const buildTemporaryMediaMeta = () => ({
+  isTemporary: true,
+  expirySource: "provider_ttl" as const,
+  expiresAt: new Date(Date.now() + VIBER_INBOUND_MEDIA_TTL_MS),
+  lastValidatedAt: null,
+});
+
+const extractGifUrls = (text?: string) => {
+  if (!text) {
+    return [];
+  }
+
+  const matches = text.match(GIF_URL_REGEX);
+  return matches ? Array.from(new Set(matches)) : [];
+};
+
+const stripGifUrls = (text?: string) => {
+  if (!text) {
+    return "";
+  }
+
+  return text.replace(GIF_URL_REGEX, " ").replace(/\s+/g, " ").trim();
+};
+
 type ViberPayload = {
   event?: string;
   timestamp?: number;
@@ -67,13 +95,14 @@ export class ViberAdapter extends BaseChannelAdapter {
       },
       outbound: {
         text: true,
-        image: false,
-        video: false,
+        image: true,
+        video: true,
         audio: false,
-        file: false,
-        location: false,
-        contact: false,
-        interactive: false,
+        file: true,
+        sticker: true,
+        location: true,
+        contact: true,
+        interactive: true,
       },
     };
   }
@@ -119,6 +148,31 @@ export class ViberAdapter extends BaseChannelAdapter {
     }
 
     if (message.type === "text" && message.text) {
+      const gifUrls = extractGifUrls(message.text);
+      if (gifUrls.length > 0) {
+        const caption = stripGifUrls(message.text);
+        return [
+          {
+            ...base,
+            senderType: "customer",
+            kind: "image",
+            ...(caption
+              ? {
+                  text: {
+                    body: caption,
+                    plain: caption,
+                  },
+                }
+              : {}),
+            media: gifUrls.map((url) => ({
+              url,
+              mimeType: "image/gif",
+              ...buildTemporaryMediaMeta(),
+            })),
+          },
+        ];
+      }
+
       return [
         {
           ...base,
@@ -143,6 +197,7 @@ export class ViberAdapter extends BaseChannelAdapter {
               url: message.media,
               thumbnailUrl: message.thumbnail,
               size: message.size,
+              ...buildTemporaryMediaMeta(),
             },
           ],
         },
@@ -160,6 +215,7 @@ export class ViberAdapter extends BaseChannelAdapter {
               url: message.media,
               thumbnailUrl: message.thumbnail,
               size: message.size,
+              ...buildTemporaryMediaMeta(),
               durationMs: message.duration ? message.duration * 1000 : undefined,
             },
           ],
@@ -176,6 +232,7 @@ export class ViberAdapter extends BaseChannelAdapter {
           media: [
             {
               url: message.media,
+              ...buildTemporaryMediaMeta(),
               filename: message.file_name,
               size: message.size,
             },
@@ -212,6 +269,23 @@ export class ViberAdapter extends BaseChannelAdapter {
       ];
     }
 
+    if (message.type === "sticker" && message.media) {
+      return [
+        {
+          ...base,
+          senderType: "customer",
+          kind: "image",
+          media: [
+            {
+              url: message.media,
+              size: message.size,
+              ...buildTemporaryMediaMeta(),
+            },
+          ],
+        },
+      ];
+    }
+
     return [
       this.buildUnsupportedMessage(
         {
@@ -232,11 +306,83 @@ export class ViberAdapter extends BaseChannelAdapter {
       webhookConfig: Record<string, unknown>;
     };
   }) {
-    const request = {
+    let request: Record<string, unknown> = {
       receiver: input.conversation.externalChatId,
       type: "text",
       text: input.message.text?.body ?? "",
     };
+
+    if (input.message.kind === "image") {
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "picture",
+        text: input.message.text?.body,
+        media: input.message.media?.[0]?.storedAssetUrl ?? input.message.media?.[0]?.url,
+      };
+    } else if (input.message.kind === "video") {
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "video",
+        text: input.message.text?.body,
+        media: input.message.media?.[0]?.storedAssetUrl ?? input.message.media?.[0]?.url,
+        size: input.message.media?.[0]?.size,
+        duration: input.message.media?.[0]?.durationMs
+          ? Math.round(input.message.media[0].durationMs / 1000)
+          : undefined,
+        thumbnail: input.message.media?.[0]?.thumbnailUrl,
+      };
+    } else if (input.message.kind === "file") {
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "file",
+        media: input.message.media?.[0]?.storedAssetUrl ?? input.message.media?.[0]?.url,
+        size: input.message.media?.[0]?.size,
+        file_name: input.message.media?.[0]?.filename,
+      };
+    } else if (input.message.kind === "location") {
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "location",
+        location: {
+          lat: input.message.location?.lat,
+          lon: input.message.location?.lng,
+        },
+      };
+    } else if (input.message.kind === "contact") {
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "contact",
+        contact: {
+          name: input.message.contact?.name,
+          phone_number: input.message.contact?.phone,
+        },
+      };
+    } else if (input.message.kind === "interactive") {
+      if (input.message.interactive?.subtype === "rich_media") {
+        request = {
+          receiver: input.conversation.externalChatId,
+          type: "rich_media",
+          rich_media: input.message.interactive.payload,
+        };
+      } else {
+        request = {
+          receiver: input.conversation.externalChatId,
+          type: "url",
+          media:
+            input.message.interactive?.value ??
+            input.message.text?.body ??
+            input.message.media?.[0]?.storedAssetUrl ??
+            input.message.media?.[0]?.url,
+        };
+      }
+    } else if (input.message.kind === "sticker") {
+      const stickerId = Number(String(input.message.meta?.platformStickerId ?? "").trim());
+      request = {
+        receiver: input.conversation.externalChatId,
+        type: "sticker",
+        sticker_id: Number.isFinite(stickerId) ? stickerId : undefined,
+      };
+    }
 
     const authToken = String(input.connection.credentials.authToken ?? "");
     if (!authToken) {
@@ -258,13 +404,16 @@ export class ViberAdapter extends BaseChannelAdapter {
         }
       );
 
+      const providerStatus = response.data?.status;
+      const providerMessage = response.data?.status_message;
       return {
         externalMessageId: String(response.data?.message_token ?? ""),
-        status:
-          response.data?.status === 0 ? ("sent" as const) : ("failed" as const),
+        status: providerStatus === 0 ? ("sent" as const) : ("failed" as const),
         raw: response.data,
         error:
-          response.data?.status === 0 ? undefined : response.data?.status_message,
+          providerStatus === 0
+            ? undefined
+            : `Viber send_message failed (status=${typeof providerStatus === "number" ? providerStatus : "unknown"}): ${providerMessage || "unknown error"}`,
         request,
       };
     } catch (error) {

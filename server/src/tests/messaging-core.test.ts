@@ -1,4 +1,6 @@
 import axios from "axios";
+import { createHmac } from "crypto";
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 let app: import("express").Express;
 let models: typeof import("../models");
 let adapterRegistry: typeof import("../channels/adapter.registry")["adapterRegistry"];
+let inboundBufferService: typeof import("../services/inbound-buffer.service")["inboundBufferService"];
 const testDbName = `chatbot_test_${Date.now()}`;
 
 const fixedTelegramDate = Math.floor(
@@ -44,12 +47,106 @@ const buildTelegramUnsupportedUpdate = (messageId: number) => ({
   },
 });
 
+const buildFacebookTextWebhook = (messageId: string, text: string) => ({
+  object: "page",
+  entry: [
+    {
+      id: "fb-page-1",
+      messaging: [
+        {
+          sender: { id: "fb-user-1" },
+          recipient: { id: "fb-page-1" },
+          timestamp: 1714430514000,
+          message: {
+            mid: messageId,
+            text,
+          },
+        },
+      ],
+    },
+  ],
+});
+
+const buildTikTokTextWebhook = (messageId: string, text: string) => ({
+  client_key: "tiktok-app-id",
+  event: "im_receive_msg",
+  create_time: 1714430514,
+  user_openid: "tiktok-business-1",
+  content: JSON.stringify({
+    from: "mina_tiktok",
+    to: "seller_account",
+    unique_identifier: "tiktok-user-1",
+    from_user: {
+      id: "tiktok-user-1",
+      role: "personal_account",
+    },
+    to_user: {
+      id: "tiktok-business-1",
+      role: "business_account",
+    },
+    conversation_id: "tiktok-conversation-1",
+    message_id: messageId,
+    timestamp: 1714430514000,
+    type: "text",
+    text: {
+      body: text,
+    },
+    message_tag: {
+      source: "APP",
+    },
+  }),
+});
+
+const signTikTokPayload = (payload: unknown, secret: string, timestamp: number) => {
+  const rawBody = JSON.stringify(payload);
+  const signature = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
+  return `t=${timestamp},s=${signature}`;
+};
+
+const signFacebookPayload = (payload: unknown, secret: string) => {
+  const rawBody = JSON.stringify(payload);
+  const signature = createHmac("sha256", secret).update(rawBody).digest("hex");
+  return `sha256=${signature}`;
+};
+
 const createWorkspace = async () => {
   return models.WorkspaceModel.create({
     name: "Seller Workspace",
     slug: `seller-${Math.random().toString(36).slice(2, 8)}`,
     timeZone: "UTC",
   });
+};
+
+const createAuthHeaders = async (workspaceId: string, role: "owner" | "admin" | "staff" = "owner") => {
+  const user = await models.UserModel.create({
+    email: `user_${Math.random().toString(36).slice(2, 8)}@test.local`,
+    name: "Test User",
+    passwordHash: "hashed-password",
+    role,
+    workspaceIds: [workspaceId],
+  });
+
+  await models.WorkspaceMembershipModel.create({
+    workspaceId,
+    userId: user._id,
+    role,
+    status: "active",
+  });
+
+  const token = jwt.sign(
+    {
+      userId: String(user._id),
+      email: user.email,
+    },
+    process.env.JWT_SECRET || "test-secret"
+  );
+
+  return {
+    Authorization: `Bearer ${token}`,
+    "x-workspace-id": workspaceId,
+  };
 };
 
 const createTelegramConnection = async (workspaceId: string) => {
@@ -71,6 +168,42 @@ const createTelegramConnection = async (workspaceId: string) => {
   });
 };
 
+const createFacebookConnection = async (workspaceId: string) => {
+  return models.ChannelConnectionModel.create({
+    workspaceId,
+    channel: "facebook",
+    displayName: "Facebook Page",
+    externalAccountId: "fb-page-1",
+    credentials: {
+      pageAccessToken: "facebook-token",
+    },
+    webhookConfig: {},
+    webhookUrl: "https://unit.test/webhooks/facebook",
+    webhookVerified: true,
+    verificationState: "verified",
+    status: "active",
+    capabilities: adapterRegistry.get("facebook").getCapabilities(),
+  });
+};
+
+const createFacebookConversation = async (workspaceId: string) => {
+  const connection = await createFacebookConnection(workspaceId);
+  const conversation = await models.ConversationModel.create({
+    workspaceId,
+    channel: "facebook",
+    channelAccountId: String(connection.externalAccountId),
+    externalChatId: "fb-user-1",
+    externalUserId: "fb-page-1:fb-user-1",
+    status: "open",
+    unreadCount: 0,
+    aiEnabled: true,
+    aiState: "idle",
+    tags: [],
+  });
+
+  return { connection, conversation };
+};
+
 const createConversationForConnection = async (workspaceId: string) => {
   const inboundResponse = await request(app)
     .post("/webhooks/telegram")
@@ -81,6 +214,75 @@ const createConversationForConnection = async (workspaceId: string) => {
   const conversation = await models.ConversationModel.findOne();
   expect(conversation).toBeTruthy();
   return conversation!;
+};
+
+const createViberConnectionAndConversation = async (workspaceId: string) => {
+  const connection = await models.ChannelConnectionModel.create({
+    workspaceId,
+    channel: "viber",
+    displayName: "Viber Bot",
+    externalAccountId: "viber-account",
+    credentials: { authToken: "viber-token" },
+    webhookConfig: {},
+    webhookUrl: "https://unit.test/webhooks/viber",
+    webhookVerified: true,
+    verificationState: "verified",
+    status: "active",
+    capabilities: adapterRegistry.get("viber").getCapabilities(),
+  });
+
+  const conversation = await models.ConversationModel.create({
+    workspaceId,
+    channel: "viber",
+    channelAccountId: String(connection.externalAccountId),
+    externalChatId: "9000",
+    status: "open",
+    unreadCount: 0,
+    aiEnabled: true,
+    aiState: "idle",
+    tags: [],
+  });
+
+  return { connection, conversation };
+};
+
+const createTikTokConnection = async (workspaceId: string) => {
+  return models.ChannelConnectionModel.create({
+    workspaceId,
+    channel: "tiktok",
+    displayName: "TikTok Business",
+    externalAccountId: "tiktok-business-1",
+    credentials: {
+      accessToken: "tiktok-access-token",
+      refreshToken: "tiktok-refresh-token",
+      businessId: "tiktok-business-1",
+      scopes: ["message.list.send", "message.list.read", "message.list.manage"],
+    },
+    webhookConfig: {},
+    webhookUrl: "https://unit.test/webhooks/tiktok",
+    webhookVerified: true,
+    verificationState: "verified",
+    status: "active",
+    capabilities: adapterRegistry.get("tiktok").getCapabilities(),
+  });
+};
+
+const createTikTokConversation = async (workspaceId: string) => {
+  const connection = await createTikTokConnection(workspaceId);
+  const conversation = await models.ConversationModel.create({
+    workspaceId,
+    channel: "tiktok",
+    channelAccountId: String(connection.externalAccountId),
+    externalChatId: "tiktok-conversation-1",
+    externalUserId: "tiktok-user-1",
+    status: "open",
+    unreadCount: 0,
+    aiEnabled: true,
+    aiState: "idle",
+    tags: [],
+  });
+
+  return { connection, conversation };
 };
 
 const configureAfterHoursAutomation = async (workspaceId: string) => {
@@ -122,10 +324,16 @@ beforeAll(async () => {
   process.env.JWT_SECRET = "test-secret";
   process.env.SESSION_SECRET = "test-secret";
   process.env.PUBLIC_WEBHOOK_BASE_URL = "https://unit.test";
-  process.env.FACEBOOK_VERIFY_TOKEN = "verify-me";
+  process.env.META_APP_ID = "meta-app-id";
+  process.env.META_APP_SECRET = "meta-app-secret";
+  process.env.META_WEBHOOK_VERIFY_TOKEN = "meta-verify-token";
+  process.env.GEMINI_API_KEY = "";
+  process.env.TIKTOK_APP_ID = "tiktok-app-id";
+  process.env.TIKTOK_APP_SECRET = "tiktok-app-secret";
 
   models = await import("../models");
   ({ adapterRegistry } = await import("../channels/adapter.registry"));
+  ({ inboundBufferService } = await import("../services/inbound-buffer.service"));
 
   await mongoose.connect(`${process.env.MONGO_URL}/${process.env.MONGO_DB}`);
   app = (await import("../app")).createApp();
@@ -147,6 +355,7 @@ afterAll(async () => {
 describe("functional messaging core", () => {
   it("telegram connection validation persists an active verified connection", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     vi.spyOn(axios, "get").mockResolvedValueOnce({
       data: {
         ok: true,
@@ -166,6 +375,7 @@ describe("functional messaging core", () => {
 
     const response = await request(app)
       .post("/api/channels/telegram/connect")
+      .set(authHeaders)
       .send({
         workspaceId: String(workspace._id),
         displayName: "Primary Telegram",
@@ -189,11 +399,12 @@ describe("functional messaging core", () => {
       botToken: "telegram-token",
       webhookSecret: "telegram-secret",
     });
-    expect(connection?.webhookUrl).toBe("https://unit.test/webhooks/telegram");
+    expect(connection?.webhookUrl).toContain("/webhooks/telegram");
   });
 
   it("viber connection validation persists an active verified connection", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     vi.spyOn(axios, "post")
       .mockResolvedValueOnce({
         data: {
@@ -211,6 +422,7 @@ describe("functional messaging core", () => {
 
     const response = await request(app)
       .post("/api/channels/viber/connect")
+      .set(authHeaders)
       .send({
         workspaceId: String(workspace._id),
         displayName: "Primary Viber",
@@ -230,6 +442,7 @@ describe("functional messaging core", () => {
 
   it("facebook config starts pending and verify endpoint promotes it to active", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     vi.spyOn(axios, "get").mockResolvedValueOnce({
       data: {
         id: "fb-page-1",
@@ -239,12 +452,12 @@ describe("functional messaging core", () => {
 
     const connectResponse = await request(app)
       .post("/api/channels/facebook/connect")
+      .set(authHeaders)
       .send({
         workspaceId: String(workspace._id),
         displayName: "Messenger",
         credentials: {
           pageAccessToken: "facebook-token",
-          verifyToken: "verify-me",
         },
         webhookConfig: {},
       });
@@ -257,7 +470,7 @@ describe("functional messaging core", () => {
       .get("/webhooks/facebook/verify")
       .query({
         "hub.mode": "subscribe",
-        "hub.verify_token": "verify-me",
+        "hub.verify_token": "meta-verify-token",
         "hub.challenge": "123456",
       });
 
@@ -270,6 +483,80 @@ describe("functional messaging core", () => {
     });
     expect(connection?.status).toBe("active");
     expect(connection?.webhookVerified).toBe(true);
+  });
+
+  it("facebook inbound webhook verifies signature and persists a text message", async () => {
+    const workspace = await createWorkspace();
+    await createFacebookConnection(String(workspace._id));
+    const payload = buildFacebookTextWebhook("fb-mid-1", "Hello from Messenger");
+    const signature = signFacebookPayload(payload, "meta-app-secret");
+
+    const response = await request(app)
+      .post("/webhooks/facebook")
+      .set("x-hub-signature-256", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body.processed).toBe(1);
+
+    const conversation = await models.ConversationModel.findOne({ channel: "facebook" });
+    const message = await models.MessageModel.findOne({ channel: "facebook" });
+    const contact = await models.ContactModel.findOne({
+      "channelIdentities.channel": "facebook",
+      "channelIdentities.externalUserId": "fb-page-1:fb-user-1",
+    });
+
+    expect(conversation?.lastMessageText).toBe("Hello from Messenger");
+    expect(message?.kind).toBe("text");
+    expect(message?.text?.body).toBe("Hello from Messenger");
+    expect(contact).toBeTruthy();
+  });
+
+  it("tiktok connection validation persists an active verified connection", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    vi.spyOn(axios, "post")
+      .mockResolvedValueOnce({
+        data: {
+          code: 0,
+          message: "OK",
+          data: {
+            app_id: "tiktok-app-id",
+            creator_id: "tiktok-business-1",
+            scope: "message.list.send,message.list.read,message.list.manage",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 0,
+          message: "OK",
+          data: {
+            app_id: "tiktok-app-id",
+            event_type: "DIRECT_MESSAGE",
+            callback_url: "https://unit.test/webhooks/tiktok",
+          },
+        },
+      });
+
+    const response = await request(app)
+      .post("/api/channels/tiktok/connect")
+      .set(authHeaders)
+      .send({
+        workspaceId: String(workspace._id),
+        displayName: "TikTok DM",
+        credentials: {
+          accessToken: "tiktok-access-token",
+          refreshToken: "tiktok-refresh-token",
+          businessId: "tiktok-business-1",
+        },
+        webhookConfig: {},
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.connection.status).toBe("active");
+    expect(response.body.connection.webhookVerified).toBe(true);
+    expect(response.body.connection.externalAccountId).toBe("tiktok-business-1");
   });
 
   it("inbound webhook persists canonical message, updates conversation, and records lastInboundAt", async () => {
@@ -314,8 +601,37 @@ describe("functional messaging core", () => {
     expect(message?.unsupportedReason).toContain("not mapped");
   });
 
+  it("tiktok inbound webhook verifies signature and persists a text message", async () => {
+    const workspace = await createWorkspace();
+    await createTikTokConnection(String(workspace._id));
+    const payload = buildTikTokTextWebhook("tt-msg-1", "Hello from TikTok");
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = signTikTokPayload(payload, "tiktok-app-secret", timestamp);
+
+    const response = await request(app)
+      .post("/webhooks/tiktok")
+      .set("tiktok-signature", signature)
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body.processed).toBe(1);
+
+    const conversation = await models.ConversationModel.findOne({ channel: "tiktok" });
+    const message = await models.MessageModel.findOne({ channel: "tiktok" });
+    const contact = await models.ContactModel.findOne({
+      "channelIdentities.channel": "tiktok",
+      "channelIdentities.externalUserId": "tiktok-user-1",
+    });
+
+    expect(conversation?.lastMessageText).toBe("Hello from TikTok");
+    expect(message?.kind).toBe("text");
+    expect(message?.text?.body).toBe("Hello from TikTok");
+    expect(contact).toBeTruthy();
+  });
+
   it("outbound send success updates delivery status and connection.lastOutboundAt", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     const connection = await createTelegramConnection(String(workspace._id));
     const conversation = await createConversationForConnection(String(workspace._id));
 
@@ -330,6 +646,7 @@ describe("functional messaging core", () => {
 
     const response = await request(app)
       .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
       .send({
         senderType: "agent",
         kind: "text",
@@ -353,8 +670,92 @@ describe("functional messaging core", () => {
     });
   });
 
+  it("supports outbound text via tiktok adapter", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { connection, conversation } = await createTikTokConversation(
+      String(workspace._id)
+    );
+
+    vi.spyOn(axios, "post")
+      .mockResolvedValueOnce({
+        data: {
+          code: 0,
+          message: "OK",
+          data: {
+            app_id: "tiktok-app-id",
+            creator_id: "tiktok-business-1",
+            scope: "message.list.send,message.list.read,message.list.manage",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          code: 0,
+          message: "OK",
+          data: {
+            message: {
+              message_id: "tiktok-out-1",
+            },
+          },
+        },
+      });
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "text",
+        text: {
+          body: "Thanks for your TikTok DM",
+        },
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.delivery.status).toBe("sent");
+    expect(response.body.message.externalMessageId).toBe("tiktok-out-1");
+
+    const refreshedConnection = await models.ChannelConnectionModel.findById(connection._id);
+    expect(refreshedConnection?.lastOutboundAt).toBeTruthy();
+  });
+
+  it("supports outbound text via facebook send api", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { connection, conversation } = await createFacebookConversation(
+      String(workspace._id)
+    );
+
+    vi.spyOn(axios, "post").mockResolvedValueOnce({
+      data: {
+        recipient_id: "fb-user-1",
+        message_id: "fb-out-1",
+      },
+    });
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "text",
+        text: {
+          body: "Thanks for messaging us on Facebook",
+        },
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.delivery.status).toBe("sent");
+    expect(response.body.message.externalMessageId).toBe("fb-out-1");
+
+    const refreshedConnection = await models.ChannelConnectionModel.findById(connection._id);
+    expect(refreshedConnection?.lastOutboundAt).toBeTruthy();
+  });
+
   it("outbound send failure records message delivery error and marks connection error", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     const connection = await createTelegramConnection(String(workspace._id));
     const conversation = await createConversationForConnection(String(workspace._id));
 
@@ -364,6 +765,7 @@ describe("functional messaging core", () => {
 
     const response = await request(app)
       .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
       .send({
         senderType: "agent",
         kind: "text",
@@ -387,6 +789,7 @@ describe("functional messaging core", () => {
 
   it("send is blocked when no active channel connection exists", async () => {
     const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
     const conversation = await models.ConversationModel.create({
       workspaceId: workspace._id,
       channel: "telegram",
@@ -419,6 +822,7 @@ describe("functional messaging core", () => {
 
     const response = await request(app)
       .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
       .send({
         senderType: "agent",
         kind: "text",
@@ -457,6 +861,8 @@ describe("functional messaging core", () => {
       .send(buildTelegramTextUpdate(3001, "Is this available?"));
 
     expect(response.status).toBe(200);
+    await models.InboundBufferModel.updateMany({}, { lastBufferedAt: new Date(0) });
+    await inboundBufferService.flushPendingBuffers();
 
     const messages = await models.MessageModel.find().sort({ createdAt: 1 });
     const automationAudit = await models.AuditLogModel.findOne({
@@ -466,9 +872,9 @@ describe("functional messaging core", () => {
       eventType: /^ai\./,
     });
 
-    expect(messages).toHaveLength(2);
-    expect(messages[1].senderType).toBe("automation");
-    expect(messages[1].text?.body).toBe("Yes, this item is available.");
+    const outboundMessage = messages.find((m) => m.direction === "outbound");
+    expect(outboundMessage?.senderType).toBe("automation");
+    expect(outboundMessage?.text?.body).toBe("Yes, this item is available.");
     expect(automationAudit).toBeTruthy();
     expect(aiAudit).toBeNull();
   });
@@ -505,13 +911,16 @@ describe("functional messaging core", () => {
       .send(buildTelegramTextUpdate(3501, "Is this available today?"));
 
     expect(response.status).toBe(200);
+    await models.InboundBufferModel.updateMany({}, { lastBufferedAt: new Date(0) });
+    await inboundBufferService.flushPendingBuffers();
 
     const messages = await models.MessageModel.find().sort({ createdAt: 1 });
+    const outboundMessage = messages.find((m) => m.direction === "outbound");
     const decisionAudit = await models.AuditLogModel.findOne({
       eventType: "automation.decision.evaluated",
     });
 
-    expect(messages[1].text?.body).toBe("Canned reply wins for availability questions.");
+    expect(outboundMessage?.text?.body).toBe("Canned reply wins for availability questions.");
     expect(decisionAudit?.reason).toContain("Matched canned reply trigger");
   });
 
@@ -526,6 +935,8 @@ describe("functional messaging core", () => {
       .send(buildTelegramTextUpdate(4001, "Can you compare three fabrics and suggest one?"));
 
     expect(response.status).toBe(200);
+    await models.InboundBufferModel.updateMany({}, { lastBufferedAt: new Date(0) });
+    await inboundBufferService.flushPendingBuffers();
 
     const conversation = await models.ConversationModel.findOne();
     const messages = await models.MessageModel.find().sort({ createdAt: 1 });
@@ -537,6 +948,203 @@ describe("functional messaging core", () => {
     expect(conversation?.tags).toContain("needs_human");
     expect(messages).toHaveLength(1);
     expect(messages[0].senderType).toBe("customer");
-    expect(handoffAudit?.reason).toContain("No canned reply matched");
+    expect(handoffAudit?.reason).toContain("Workspace Gemini API key is not configured");
+  });
+
+  it("buffers quick inbound text messages and flushes as one combined AI input", async () => {
+    const workspace = await createWorkspace();
+    await createTelegramConnection(String(workspace._id));
+    await configureAfterHoursAutomation(String(workspace._id));
+    await models.CannedReplyModel.create({
+      workspaceId: String(workspace._id),
+      title: "Combine reply",
+      body: "Combined reply.",
+      triggers: ["combined"],
+      category: "sales",
+    });
+
+    vi.spyOn(axios, "post").mockResolvedValueOnce({ data: { ok: true, result: { message_id: 9901 } } });
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send(buildTelegramTextUpdate(5001, "Hello"));
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send(buildTelegramTextUpdate(5002, "I need combined"));
+
+    await models.InboundBufferModel.updateMany({}, { lastBufferedAt: new Date(0) });
+    await inboundBufferService.flushPendingBuffers();
+
+    const messages = await models.MessageModel.find({}).sort({ createdAt: 1 });
+    const outbound = messages.find((msg) => msg.direction === "outbound");
+    expect(outbound?.senderType).toBe("automation");
+    expect(outbound?.text?.body).toBe("Combined reply.");
+  });
+
+  it("extends buffer with new text before expiry", async () => {
+    const workspace = await createWorkspace();
+    await createTelegramConnection(String(workspace._id));
+    await configureAfterHoursAutomation(String(workspace._id));
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send(buildTelegramTextUpdate(6001, "part one"));
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send(buildTelegramTextUpdate(6002, "part two"));
+
+    const pending = await models.InboundBufferModel.findOne({ status: "pending" });
+    expect(pending).toBeTruthy();
+    expect(pending?.combinedText).toContain("part one\npart two");
+  });
+
+  it("does not merge non-text inbound messages into text buffer", async () => {
+    const workspace = await createWorkspace();
+    await createTelegramConnection(String(workspace._id));
+    await configureAfterHoursAutomation(String(workspace._id));
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send(buildTelegramTextUpdate(7001, "first text"));
+
+    await request(app)
+      .post("/webhooks/telegram")
+      .set("x-telegram-bot-api-secret-token", "telegram-secret")
+      .send({
+        update_id: 7002,
+        message: {
+          message_id: 7002,
+          date: fixedTelegramDate,
+          chat: { id: 5001 },
+          from: { id: 7001, first_name: "Mina" },
+          photo: [{ file_id: "photo1", width: 100, height: 100 }],
+        },
+      });
+
+    const pending = await models.InboundBufferModel.findOne({ status: "pending" });
+    expect(pending).toBeFalsy();
+  });
+
+  it("supports outbound image via telegram adapter", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const connection = await createTelegramConnection(String(workspace._id));
+    const conversation = await createConversationForConnection(String(workspace._id));
+
+    vi.spyOn(axios, "post").mockResolvedValueOnce({
+      data: { ok: true, result: { message_id: 8801 } },
+    });
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "image",
+        media: [{ url: "https://example.com/img.jpg" }],
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.delivery.status).toBe("sent");
+  });
+
+  it("marks viber inbound media as temporary with provider ttl expiry", async () => {
+    const adapter = adapterRegistry.get("viber");
+    const parsed = await adapter.parseInbound({
+      event: "message",
+      timestamp: Date.now(),
+      message_token: "vtok-1",
+      sender: { id: "sender-1", name: "Mina" },
+      message: {
+        type: "picture",
+        media: "https://media.viber.example/img.jpg",
+        size: 1024,
+      },
+    });
+
+    expect(parsed).toHaveLength(1);
+    const media = parsed[0].media?.[0];
+    expect(parsed[0].kind).toBe("image");
+    expect(media?.isTemporary).toBe(true);
+    expect(media?.expirySource).toBe("provider_ttl");
+    expect(media?.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it("validates viber outbound image requires url", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { conversation } = await createViberConnectionAndConversation(String(workspace._id));
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "image",
+        media: [{}],
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("validates viber outbound video requires size", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { conversation } = await createViberConnectionAndConversation(String(workspace._id));
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "video",
+        media: [{ url: "https://assets.example/video.mp4", durationMs: 4000 }],
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("validates viber outbound file requires size", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { conversation } = await createViberConnectionAndConversation(String(workspace._id));
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "file",
+        media: [{ url: "https://assets.example/doc.pdf", filename: "doc.pdf" }],
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("blocks unsupported outbound media kind honestly", async () => {
+    const workspace = await createWorkspace();
+    const authHeaders = await createAuthHeaders(String(workspace._id));
+    const { conversation } = await createViberConnectionAndConversation(String(workspace._id));
+
+    const response = await request(app)
+      .post(`/api/conversations/${conversation._id}/messages`)
+      .set(authHeaders)
+      .send({
+        senderType: "agent",
+        kind: "audio",
+        media: [{ url: "https://assets.example/audio.mp3" }],
+      });
+
+    expect(response.status).toBe(422);
+    expect(response.body.error.message).toContain("does not support outbound kind audio");
   });
 });

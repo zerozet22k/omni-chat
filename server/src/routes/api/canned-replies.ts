@@ -7,13 +7,16 @@ import {
   updateCannedReplySchema,
 } from "../../lib/validators";
 import { cannedReplyService } from "../../services/canned-reply.service";
+import { requireWorkspace } from "../../middleware/require-workspace";
+import { requireRole } from "../../middleware/require-role";
 
 const router = Router();
+router.use(requireWorkspace);
 
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const workspaceId = String(req.query.workspaceId ?? "");
+    const workspaceId = String(req.workspace?._id ?? "");
     const items = await cannedReplyService.list(workspaceId);
     res.json({ items });
   })
@@ -21,8 +24,12 @@ router.get(
 
 router.post(
   "/",
+  requireRole(["owner", "admin"]),
   asyncHandler(async (req, res) => {
-    const payload = createCannedReplySchema.parse(req.body);
+    const payload = createCannedReplySchema.parse({
+      ...req.body,
+      workspaceId: String(req.workspace?._id ?? ""),
+    });
     const item = await cannedReplyService.create(payload);
     res.status(201).json({ item });
   })
@@ -43,6 +50,7 @@ router.get(
 
 router.patch(
   "/:id",
+  requireRole(["owner", "admin"]),
   asyncHandler(async (req, res) => {
     const { id } = objectIdParamSchema.parse(req.params);
     const patch = updateCannedReplySchema.parse(req.body);

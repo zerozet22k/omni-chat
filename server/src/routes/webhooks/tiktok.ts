@@ -1,15 +1,23 @@
-import { Router } from "express";
+import { Request, Router } from "express";
 import { asyncHandler } from "../../lib/async-handler";
-import { IntegrationNotReadyError } from "../../lib/errors";
+import { inboundWebhookService } from "../../services/inbound-webhook.service";
 
 const router = Router();
 
 router.post(
   "/",
-  asyncHandler(async (_req, _res) => {
-    throw new IntegrationNotReadyError(
-      "TikTok webhook support is scaffold-only until public business messaging support is verified."
-    );
+  asyncHandler(async (req, res) => {
+    const result = await inboundWebhookService.handle({
+      channel: "tiktok",
+      body: req.body,
+      rawBody: (req as Request & { rawBody?: string }).rawBody,
+      headers: req.headers,
+      query: {},
+    });
+
+    res.status(200).json({
+      processed: result.processed.length,
+    });
   })
 );
 
