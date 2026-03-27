@@ -1,0 +1,50 @@
+{
+  "name": "elqen-zero-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "seed": "tsx src/scripts/seed.ts",
+    "test": "vitest run",
+    "dev:public": "node scripts/dev-public-cloudflare.mjs",
+    "worker:inbound": "tsx src/workers/inbound-webhooks.worker.ts",
+    "worker:outbound": "tsx src/workers/outbound-sends.worker.ts",
+    "worker:billing": "tsx src/workers/billing-events.worker.ts",
+    "worker:notifications": "tsx src/workers/notifications.worker.ts"
+  },
+  "dependencies": {
+    "@types/nodemailer": "^7.0.11",
+    "axios": "^1.8.4",
+    "bcrypt": "^6.0.0",
+    "bullmq": "^5.71.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.12.1",
+    "nodemailer": "^8.0.3",
+    "socket.io": "^4.8.3",
+    "stripe": "^21.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.13.10",
+    "@types/supertest": "^6.0.3",
+    "mongodb-memory-server": "^10.1.4",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}
