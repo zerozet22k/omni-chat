@@ -107,6 +107,8 @@ This repo is prepared for Railway as two services from one GitHub repository:
 - `server` service rooted at `server/`
 - `client` service rooted at `client/`
 
+Do not deploy the repository root as a single Railway service. The root package is only for local orchestration.
+
 Production entrypoints already exist:
 
 - server build: `npm run build`
@@ -115,6 +117,7 @@ Production entrypoints already exist:
 - client start: `npm run start`
 
 The client production server serves the built `dist` folder directly, so Railway can run it as a standard web service.
+Both `client/` and `server/` now include a `Dockerfile` for more reliable Railway builds when each service points at the correct root directory.
 
 See [docs/deploy-railway.md](docs/deploy-railway.md) for the full Railway setup, required variables, and deploy order.
 

@@ -5,6 +5,8 @@ This repo is prepared to run as two Railway services from one GitHub repository:
 - `server` for the API and webhooks
 - `client` for the React app
 
+Do not deploy the repo root as a single Railway service. The repository root is only the monorepo orchestrator, not a standalone production app.
+
 ## Before Railway
 
 1. Push the current repo to GitHub.
@@ -25,6 +27,8 @@ For each service, connect the same GitHub repo, then set the **Root Directory**:
 
 - server service root: `server`
 - client service root: `client`
+
+The `server/` and `client/` directories now each include a `Dockerfile`, so once the service root is correct Railway can build either service without relying on root-level monorepo detection.
 
 With those roots set, Railway can use the package scripts already in this repo:
 
@@ -113,3 +117,12 @@ Before pushing for Railway:
 - The client now serves its built `dist` folder with `client/scripts/serve-dist.mjs`, so Railway can run it as a normal web service.
 - The server already binds to `PORT`, which matches Railway's runtime model.
 - If you use Railway public domains first and custom domains later, update `CLIENT_URL`, `SOCKET_ORIGIN`, `CORS_ALLOWED_ORIGINS`, and `PUBLIC_WEBHOOK_BASE_URL` after the custom domain is live.
+
+## Troubleshooting
+
+- If Railway shows `Error creating build plan with Railpack`, it is usually still trying to build the repo root instead of `client/` or `server/`.
+- Open the service `Settings`, set the `Root Directory` first, then redeploy.
+- Create two services, not one:
+  - one for `server`
+  - one for `client`
+- If Railway still does not pick up the `Dockerfile` automatically, verify the service source is the GitHub repo and the root directory matches the folder that contains the `Dockerfile`.
